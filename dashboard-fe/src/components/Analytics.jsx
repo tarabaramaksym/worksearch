@@ -30,14 +30,14 @@ ChartJS.register(
 /**
  * Analytics component for job dashboard insights
  */
-function Analytics({ jobs }) {
-  const { filterJobs, filters } = useApp()
+function Analytics() {
+  const { jobs, filters } = useApp()
   const [selectedMetric, setSelectedMetric] = useState('tags')
   const [topN, setTopN] = useState(10)
   const [tagFilter, setTagFilter] = useState('all')
   
-  // Use filtered jobs from global context
-  const filteredJobsFromContext = filterJobs(jobs)
+  // Use filtered jobs from global context (already filtered on server)
+  const filteredJobsFromContext = jobs
 
   /**
    * Process job data to extract analytics insights

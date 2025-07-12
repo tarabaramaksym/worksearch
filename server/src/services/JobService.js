@@ -294,6 +294,78 @@ class JobService {
             throw new Error(`Failed to delete job: ${error.message}`);
         }
     }
+
+    /**
+     * Get jobs with filters and dynamic filter options
+     */
+    async getJobsWithFilters(filters = {}) {
+        try {
+            const jobs = await this.jobRepo.searchJobs(filters);
+            
+            const filterOptions = this.calculateFilterOptions(jobs);
+            
+            return {
+                jobs: ResponseFormatter.formatJobs(jobs),
+                count: jobs.length,
+                filters: filterOptions,
+                appliedFilters: filters
+            };
+        } catch (error) {
+            throw new Error(`Failed to get jobs with filters: ${error.message}`);
+        }
+    }
+
+    /**
+     * Calculate available filter options based on current job results
+     */
+    calculateFilterOptions(jobs) {
+        const companies = new Set();
+        const locations = new Set();
+        const tagCategories = new Map();
+        const websites = new Set();
+
+        jobs.forEach(job => {
+            if (job.company_name) {
+                companies.add(job.company_name);
+            }
+
+            if (job.locations) {
+                job.locations.split(',').forEach(location => {
+                    if (location.trim()) locations.add(location.trim());
+                });
+            }
+
+            if (job.tags) {
+                job.tags.split(',').forEach(tag => {
+                    const [tagName, tagCategory] = tag.split(':');
+                    if (tagName.trim()) {
+                        const category = tagCategory || 'other';
+                        if (!tagCategories.has(category)) {
+                            tagCategories.set(category, new Set());
+                        }
+                        tagCategories.get(category).add(tagName.trim());
+                    }
+                });
+            }
+
+            if (job.website_name) {
+                websites.add(job.website_name);
+            }
+        });
+
+        // Convert tag categories to sorted arrays
+        const tagCategoryFilters = {};
+        tagCategories.forEach((tagSet, category) => {
+            tagCategoryFilters[category] = Array.from(tagSet).sort();
+        });
+
+        return {
+            companies: Array.from(companies).sort(),
+            locations: Array.from(locations).sort(),
+            tagCategories: tagCategoryFilters,
+            websites: Array.from(websites).sort()
+        };
+    }
 }
 
 module.exports = JobService; 

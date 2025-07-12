@@ -1,46 +1,57 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import './Filters.css'
 
-/**
- * Dynamic Filters Component
- */
-function Filters({ jobs = [] }) {
-  
+function Filters() {
   const { 
     filters, 
     filterOptions,
     setFilter, 
     toggleFilterItem, 
     resetFilters,
-    filterJobs 
+    resultCount
   } = useApp()
   
   const [collapsedSections, setCollapsedSections] = useState({
     companies: true,
     locations: true,
-    tags: true,
     websites: true
   })
   const [showAllSections, setShowAllSections] = useState({})
   const [sectionSearches, setSectionSearches] = useState({})
 
-  // Count filtered results
-  const filteredJobs = filterJobs(jobs)
-  const resultCount = filteredJobs.length
+  useEffect(() => {
+    if (filterOptions.tagCategories) {
+      const newCollapsedSections = {}
+      Object.keys(filterOptions.tagCategories).forEach(category => {
+        if (collapsedSections[category] === undefined) {
+          newCollapsedSections[category] = true
+        }
+      })
+      if (Object.keys(newCollapsedSections).length > 0) {
+        setCollapsedSections(prev => ({
+          ...prev,
+          ...newCollapsedSections
+        }))
+      }
+    }
+  }, [filterOptions.tagCategories])
 
-  // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
-    return (
+    const basicFilters = (
       filters.search ||
       filters.companies.length > 0 ||
       filters.locations.length > 0 ||
-      filters.tags.length > 0 ||
       filters.websites.length > 0 ||
       filters.applied !== 'all' ||
       filters.dateRange !== 'all'
     )
-  }, [filters])
+    const tagCategoryFilters = filterOptions.tagCategories ? 
+      Object.keys(filterOptions.tagCategories).some(category => 
+        filters[category] && filters[category].length > 0
+      ) : false
+    return basicFilters || tagCategoryFilters
+  }, [filters, filterOptions.tagCategories])
 
   const toggleSection = (section) => {
     setCollapsedSections(prev => ({
@@ -65,24 +76,6 @@ function Filters({ jobs = [] }) {
     setFilter(type, value)
   }
 
-  const getItemCount = (filterType, item) => {
-    // Count how many jobs have this filter item
-    return jobs.filter(job => {
-      switch (filterType) {
-        case 'companies':
-          return job.company_name === item
-        case 'locations':
-          return job.locations && job.locations.includes(item)
-        case 'tags':
-          return job.tags && job.tags.some(tag => tag.name === item)
-        case 'websites':
-          return job.website_name === item
-        default:
-          return false
-      }
-    }).length
-  }
-
   const toggleShowAll = (filterType) => {
     setShowAllSections(prev => ({
       ...prev,
@@ -102,12 +95,9 @@ function Filters({ jobs = [] }) {
     const selectedItems = filters[filterType] || []
     const showAll = showAllSections[filterType] || false
     const sectionSearch = sectionSearches[filterType] || ''
-    
-    // Filter items based on section search
     const filteredItems = sectionSearch 
       ? items.filter(item => item.toLowerCase().includes(sectionSearch.toLowerCase()))
       : items
-    
     const displayItems = showAll ? filteredItems : filteredItems.slice(0, limit)
     const hasMore = filteredItems.length > limit
 
@@ -122,10 +112,8 @@ function Filters({ jobs = [] }) {
           <h3>{title}</h3>
           <span className={`toggle-icon ${isCollapsed ? 'collapsed' : ''}`}>▼</span>
         </div>
-        
         {!isCollapsed && (
           <div className="filter-section-content">
-            {/* Section Search */}
             <div className="section-search">
               <input
                 type="text"
@@ -136,12 +124,9 @@ function Filters({ jobs = [] }) {
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
-
             <div className="filter-items">
               {displayItems.map(item => {
-                const count = getItemCount(filterType, item)
                 const isSelected = selectedItems.includes(item)
-                
                 return (
                   <div 
                     key={item}
@@ -152,17 +137,15 @@ function Filters({ jobs = [] }) {
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => {}} // Handled by onClick
+                        onChange={() => {}}
                         className="filter-checkbox"
                       />
                       <span className="filter-text">{item}</span>
-                      <span className="filter-count">({count})</span>
                     </label>
                   </div>
                 )
               })}
             </div>
-            
             {hasMore && (
               <button 
                 className="show-more-btn"
@@ -186,7 +169,6 @@ function Filters({ jobs = [] }) {
             {resultCount} {resultCount === 1 ? 'job' : 'jobs'}
           </span>
         </div>
-        
         {hasActiveFilters && (
           <button 
             className="clear-filters-btn"
@@ -196,14 +178,12 @@ function Filters({ jobs = [] }) {
           </button>
         )}
       </div>
-
       <div className="filters-content">
-        {/* Search */}
         <div className="filter-section">
           <div className="search-container">
             <input
               type="text"
-              placeholder="Search jobs, companies, descriptions..."
+              placeholder="Search jobs..."
               value={filters.search}
               onChange={handleSearchChange}
               className="search-input"
@@ -211,8 +191,6 @@ function Filters({ jobs = [] }) {
             <span className="search-icon">🔍</span>
           </div>
         </div>
-
-        {/* Quick Filters */}
         <div className="filter-section">
           <h3>Quick Filters</h3>
           <div className="quick-filters">
@@ -225,7 +203,6 @@ function Filters({ jobs = [] }) {
               <option value="not_applied">Not Applied</option>
               <option value="applied">Applied</option>
             </select>
-
             <select 
               value={filters.dateRange} 
               onChange={handleDateRangeChange}
@@ -238,8 +215,6 @@ function Filters({ jobs = [] }) {
               <option value="custom">Custom Range</option>
             </select>
           </div>
-
-          {/* Custom Date Range */}
           {filters.dateRange === 'custom' && (
             <div className="custom-date-range">
               <input
@@ -258,11 +233,16 @@ function Filters({ jobs = [] }) {
             </div>
           )}
         </div>
-
-        {/* Dynamic Filter Sections */}
-        {renderFilterSection('Skills & Tags', 'tags', filterOptions.tags, 15)}
-        {renderFilterSection('Companies', 'companies', filterOptions.companies)}
-        {renderFilterSection('Locations', 'locations', filterOptions.locations)}
+        {filterOptions.tagCategories && Object.entries(filterOptions.tagCategories).map(([category, tags]) => {
+			const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ')
+			return (
+				<div key={category}>
+              {renderFilterSection(categoryTitle, category, tags, 10)}
+            </div>
+          )
+        })}
+		{renderFilterSection('Companies', 'companies', filterOptions.companies)}
+		{renderFilterSection('Locations', 'locations', filterOptions.locations)}
         {renderFilterSection('Websites', 'websites', filterOptions.websites)}
       </div>
     </div>

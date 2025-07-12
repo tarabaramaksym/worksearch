@@ -78,7 +78,7 @@ class JobRepository extends BaseRepository {
      * Search jobs with filters
      */
     async searchJobs(filters = {}) {
-        const { q, job_name, job_description, company, applied, tags, website } = filters;
+        const { q, job_name, job_description, company, applied, website, location, ...tagCategoryFilters } = filters;
         
         let query = `
             SELECT DISTINCT
@@ -134,19 +134,36 @@ class JobRepository extends BaseRepository {
             params.push(applied === 'true' ? 1 : 0);
         }
 
-        if (tags) {
-            const tagList = tags.split(',').map(tag => tag.trim());
-            const tagPlaceholders = tagList.map(() => '?').join(',');
-            query += ` AND t.tag_name IN (${tagPlaceholders})`;
-            params.push(...tagList);
-        }
-
         if (website) {
             query += ` AND w.website_name LIKE ?`;
             params.push(`%${website}%`);
         }
 
-        query += ` GROUP BY j.entity_id ORDER BY j.created_at DESC`;
+        if (location) {
+            query += ` AND l.location LIKE ?`;
+            params.push(`%${location}%`);
+        }
+
+        query += ` GROUP BY j.entity_id`;
+
+        // Handle tag categories with AND logic (job must have ALL selected tags from each category)
+        const tagConditions = [];
+        Object.entries(tagCategoryFilters).forEach(([category, tagString]) => {
+            if (tagString && typeof tagString === 'string') {
+                const tagList = tagString.split(',').map(tag => tag.trim()).filter(tag => tag);
+                if (tagList.length > 0) {
+                    const tagPlaceholders = tagList.map(() => '?').join(',');
+                    tagConditions.push(`COUNT(DISTINCT CASE WHEN t.tag_name IN (${tagPlaceholders}) THEN t.tag_name END) = ?`);
+                    params.push(...tagList, tagList.length);
+                }
+            }
+        });
+
+        if (tagConditions.length > 0) {
+            query += ` HAVING ${tagConditions.join(' AND ')}`;
+        }
+
+        query += ` ORDER BY j.created_at DESC`;
 
         return await this.db.all(query, params);
     }

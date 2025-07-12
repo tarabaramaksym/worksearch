@@ -97,6 +97,7 @@ class JobDashboardAPI {
         // Job routes
         this.app.get('/api/jobs', asyncHandler(this.getAllJobs.bind(this)));
         this.app.get('/api/jobs/search', asyncHandler(this.searchJobs.bind(this)));
+        this.app.get('/api/jobs/filtered', asyncHandler(this.getJobsWithFilters.bind(this)));
         this.app.get('/api/jobs/:id', asyncHandler(this.getJobById.bind(this)));
         this.app.post('/api/jobs', validateJobCreation, asyncHandler(this.createJob.bind(this)));
         this.app.put('/api/jobs/:id/applied', validateAppliedUpdate, asyncHandler(this.updateJobApplied.bind(this)));
@@ -213,6 +214,14 @@ class JobDashboardAPI {
      */
     async deleteJob(req, res) {
         const result = await this.services.jobService.deleteJob(req.params.id);
+        res.json(result);
+    }
+
+    /**
+     * Get jobs with filters and dynamic filter options
+     */
+    async getJobsWithFilters(req, res) {
+        const result = await this.services.jobService.getJobsWithFilters(req.query);
         res.json(result);
     }
 

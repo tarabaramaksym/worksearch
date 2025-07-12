@@ -1,35 +1,44 @@
-import { createContext, useContext, useReducer, useMemo } from 'react'
+import { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react'
 
 const AppContext = createContext()
 
-// Initial state
 const initialState = {
-  // UI State
-  currentView: 'jobs', // 'jobs' or 'analytics'
+  currentView: 'jobs',
   
-  // Filters
   filters: {
     search: '',
     companies: [],
     locations: [],
-    tags: [],
     websites: [],
-    applied: 'all', // 'all', 'applied', 'not_applied'
-    dateRange: 'all', // 'all', 'today', 'week', 'month', 'custom'
+    applied: 'all',	
+    dateRange: 'all',
     customDateStart: '',
-    customDateEnd: ''
-  }
+    customDateEnd: '',
+    // Dynamic tag category filters will be added here
+  },
+  
+  jobs: [],
+  filterOptions: {
+    companies: [],
+    locations: [],
+    tagCategories: {},
+    websites: []
+  },
+  loading: true,
+  error: null,
+  resultCount: 0
 }
 
-// Actions
 const actions = {
   SET_VIEW: 'SET_VIEW',
   SET_FILTER: 'SET_FILTER',
   RESET_FILTERS: 'RESET_FILTERS',
-  TOGGLE_FILTER_ITEM: 'TOGGLE_FILTER_ITEM'
+  TOGGLE_FILTER_ITEM: 'TOGGLE_FILTER_ITEM',
+  SET_LOADING: 'SET_LOADING',
+  SET_ERROR: 'SET_ERROR',
+  SET_JOBS_DATA: 'SET_JOBS_DATA'
 }
 
-// Reducer
 function appReducer(state, action) {
   switch (action.type) {
     case actions.SET_VIEW:
@@ -37,7 +46,6 @@ function appReducer(state, action) {
         ...state,
         currentView: action.payload
       }
-      
     case actions.SET_FILTER:
       return {
         ...state,
@@ -46,12 +54,10 @@ function appReducer(state, action) {
           [action.payload.key]: action.payload.value
         }
       }
-      
     case actions.TOGGLE_FILTER_ITEM:
       const { filterType, item } = action.payload
-      const currentItems = state.filters[filterType]
+      const currentItems = state.filters[filterType] || []
       const isSelected = currentItems.includes(item)
-      
       return {
         ...state,
         filters: {
@@ -61,183 +67,138 @@ function appReducer(state, action) {
             : [...currentItems, item]
         }
       }
-      
     case actions.RESET_FILTERS:
+      const resetFilters = { ...initialState.filters }
+      Object.keys(state.filters).forEach(key => {
+        if (Array.isArray(state.filters[key]) && !Object.prototype.hasOwnProperty.call(initialState.filters, key)) {
+          resetFilters[key] = []
+        }
+      })
       return {
         ...state,
-        filters: initialState.filters
+        filters: resetFilters
       }
-      
+    case actions.SET_LOADING:
+      return {
+        ...state,
+        loading: action.payload
+      }
+    case actions.SET_ERROR:
+      return {
+        ...state,
+        error: action.payload,
+        loading: false
+      }
+    case actions.SET_JOBS_DATA:
+      return {
+        ...state,
+        jobs: action.payload.jobs,
+        filterOptions: action.payload.filters,
+        resultCount: action.payload.count,
+        loading: false,
+        error: null
+      }
     default:
       return state
   }
 }
 
-/**
- * App Context Provider
- */
-export function AppProvider({ children, jobs = [] }) {
+export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState)
-  
-  // Calculate filter options from jobs data
-  const filterOptions = useMemo(() => {
-    if (!jobs || jobs.length === 0) {
-      return {
-        companies: [],
-        locations: [],
-        tags: [],
-        websites: []
-      }
+  const debounceTimer = useRef(null)
+
+  const buildFilterParams = useCallback((filters) => {
+    const params = new URLSearchParams()
+    if (filters.search) {
+      params.append('q', filters.search)
     }
-
-    const companies = new Set()
-    const locations = new Set()
-    const tags = new Set()
-    const websites = new Set()
-
-    jobs.forEach(job => {
-      // Companies
-      if (job.company_name) {
-        companies.add(job.company_name)
-      }
-
-      // Locations
-      if (job.locations && Array.isArray(job.locations)) {
-        job.locations.forEach(location => {
-          if (location) locations.add(location)
-        })
-      }
-
-      // Tags
-      if (job.tags && Array.isArray(job.tags)) {
-        job.tags.forEach(tag => {
-          if (tag.name) tags.add(tag.name)
-        })
-      }
-
-      // Websites
-      if (job.website_name) {
-        websites.add(job.website_name)
+    if (filters.companies.length > 0) {
+      params.append('company', filters.companies.join(','))
+    }
+    if (filters.locations.length > 0) {
+      params.append('location', filters.locations.join(','))
+    }
+    if (filters.websites.length > 0) {
+      params.append('website', filters.websites.join(','))
+    }
+    if (filters.applied !== 'all') {
+      params.append('applied', filters.applied === 'applied' ? 'true' : 'false')
+    }
+    Object.entries(filters).forEach(([key, value]) => {
+      if (Array.isArray(value) && value.length > 0 && 
+          !['search', 'companies', 'locations', 'websites', 'applied', 'dateRange', 'customDateStart', 'customDateEnd'].includes(key)) {
+        params.append(key, value.join(','))
       }
     })
+    return params.toString()
+  }, [])
 
-    return {
-      companies: Array.from(companies).sort(),
-      locations: Array.from(locations).sort(),
-      tags: Array.from(tags).sort(),
-      websites: Array.from(websites).sort()
+  const fetchJobsWithFilters = useCallback(async (filters) => {
+    try {
+      dispatch({ type: actions.SET_LOADING, payload: true })
+      const filterParams = buildFilterParams(filters)
+      const url = `http://localhost:3000/api/jobs/filtered${filterParams ? `?${filterParams}` : ''}`
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error('Failed to fetch jobs')
+      }
+      const data = await response.json()
+      dispatch({ 
+        type: actions.SET_JOBS_DATA, 
+        payload: {
+          jobs: data.jobs,
+          filters: data.filters,
+          count: data.count
+        }
+      })
+    } catch (error) {
+      dispatch({ type: actions.SET_ERROR, payload: error.message })
     }
-  }, [jobs])
-  
-  // Action creators
+  }, [buildFilterParams])
+
+  const debouncedFetchJobs = useCallback((filters) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+    }
+    debounceTimer.current = setTimeout(() => {
+      fetchJobsWithFilters(filters)
+    }, 300)
+  }, [fetchJobsWithFilters])
+
+  useEffect(() => {
+    const isSearchFilter = state.filters.search !== ''
+    if (isSearchFilter) {
+      debouncedFetchJobs(state.filters)
+    } else {
+      fetchJobsWithFilters(state.filters)
+    }
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
+    }
+  }, [state.filters, fetchJobsWithFilters, debouncedFetchJobs])
+
   const setView = (view) => {
     dispatch({ type: actions.SET_VIEW, payload: view })
   }
-  
   const setFilter = (key, value) => {
     dispatch({ type: actions.SET_FILTER, payload: { key, value } })
   }
-  
   const toggleFilterItem = (filterType, item) => {
     dispatch({ type: actions.TOGGLE_FILTER_ITEM, payload: { filterType, item } })
   }
-  
   const resetFilters = () => {
     dispatch({ type: actions.RESET_FILTERS })
   }
-  
-  // Note: filterOptions are now calculated automatically from jobs data
-  
-  // Filter jobs based on current filters
-  const filterJobs = useMemo(() => {
-    return (jobs) => {
-      if (!jobs || jobs.length === 0) return []
-      
-      return jobs.filter(job => {
-        const { filters } = state
-        
-        // Search filter
-        if (filters.search) {
-          const searchTerm = filters.search.toLowerCase()
-          const searchableText = `${job.job_name} ${job.job_description} ${job.company_name}`.toLowerCase()
-          if (!searchableText.includes(searchTerm)) return false
-        }
-        
-        // Company filter
-        if (filters.companies.length > 0) {
-          if (!filters.companies.includes(job.company_name)) return false
-        }
-        
-        // Location filter
-        if (filters.locations.length > 0) {
-          if (!job.locations || !job.locations.some(loc => filters.locations.includes(loc))) return false
-        }
-        
-        // Tags filter
-        if (filters.tags.length > 0) {
-          if (!job.tags || !job.tags.some(tag => filters.tags.includes(tag.name))) return false
-        }
-        
-        // Website filter
-        if (filters.websites.length > 0) {
-          if (!filters.websites.includes(job.website_name)) return false
-        }
-        
-        // Applied filter
-        if (filters.applied !== 'all') {
-          const isApplied = job.applied
-          if (filters.applied === 'applied' && !isApplied) return false
-          if (filters.applied === 'not_applied' && isApplied) return false
-        }
-        
-        // Date range filter
-        if (filters.dateRange !== 'all') {
-          const jobDate = new Date(job.created_at)
-          const now = new Date()
-          
-          switch (filters.dateRange) {
-            case 'today':
-              const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-              if (jobDate < today) return false
-              break
-              
-            case 'week':
-              const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-              if (jobDate < weekAgo) return false
-              break
-              
-            case 'month':
-              const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-              if (jobDate < monthAgo) return false
-              break
-              
-            case 'custom':
-              if (filters.customDateStart && jobDate < new Date(filters.customDateStart)) return false
-              if (filters.customDateEnd && jobDate > new Date(filters.customDateEnd)) return false
-              break
-          }
-        }
-        
-        return true
-      })
-    }
-  }, [state.filters])
-  
   const value = {
-    // State
     ...state,
-    filterOptions, // Use computed filterOptions instead of state.filterOptions
-    
-    // Actions
     setView,
     setFilter,
     toggleFilterItem,
     resetFilters,
-    
-    // Computed
-    filterJobs
+    refetchJobs: () => fetchJobsWithFilters(state.filters)
   }
-  
   return (
     <AppContext.Provider value={value}>
       {children}
@@ -245,13 +206,10 @@ export function AppProvider({ children, jobs = [] }) {
   )
 }
 
-/**
- * Hook to use app context
- */
 export function useApp() {
   const context = useContext(AppContext)
   if (!context) {
-    throw new Error('useApp must be used within AppProvider')
+    throw new Error('useApp must be used within an AppProvider')
   }
   return context
 } 
