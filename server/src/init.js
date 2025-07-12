@@ -4,7 +4,7 @@ const path = require('path');
 
 class DatabaseInitializer {
     constructor(dbPath = 'data/job_dashboard.db') {
-		const currentDir = path.dirname(fileURLToPath(import.meta.url));
+		const currentDir = __dirname;
 
 		if (currentDir.includes('server')) {
 			this.dbPath = dbPath;
