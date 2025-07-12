@@ -1,0 +1,22 @@
+{
+	"name": "job-dashboard-crawler",
+	"version": "1.0.0",
+	"description": "Web crawler for job boards",
+	"main": "crawl.js",
+	"scripts": {
+		"start": "node crawl.js",
+		"dev": "node example.js",
+		"install-browsers": "npx playwright install"
+	},
+	"keywords": [
+		"web-crawler",
+		"playwright",
+		"job-scraping"
+	],
+	"dependencies": {
+		"axios": "^1.10.0",
+		"playwright": "^1.53.1"
+	},
+	"author": "Maksym Tarabara <tarabara.maksym@protonmail.com>",
+	"license": "SEE LICENSE IN LICENSE"
+}

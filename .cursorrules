@@ -1,0 +1,19 @@
+# Cursor Rules for Job Dashboard Project
+
+## Genera rules
+- Do not create/implement features unless specifically asked to do so, e.g. if you are asked a question on how best to refactor something do not do it just provide examples/structure etc. first, but if told to do something instead of asked a question proceed with doing it without asking for permission
+- Do not run commands yourself, just give the commands to the user to run on their own
+
+## General File Creation Rules
+- Do not add copyright messages
+
+## Code Organization
+- Keep consistent file structure
+- Use meaningful variable and function names
+- Maintain proper indentation and spacing
+
+## Project Structure
+- Frontend: React application in `dashboard-fe/`
+- Backend: Node.js server in `server/`
+- Data crawler: Node.js application in `crawler/`
+- Follow existing project conventions for each component 

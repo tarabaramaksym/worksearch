@@ -1,0 +1,31 @@
+{
+	"name": "Glassdoor",
+	"baseUrl": "https://www.glassdoor.com/Job/",
+	"listSelector": "[data-test='jobListing']",
+	"listingLink": "a[data-test='job-link']",
+	"listingJobName": "a[data-test='job-title']",
+	"listingJobCompany": ".jobCard > div::first-child > div::first-child span",
+	"loadMoreSelector": "[data-test='load-more']",
+	"loadMoreBtnRemoved": true,
+	"scrollToButton": true,
+	"popupCloseSelectors": [
+		".CloseButton"
+	],
+	"jobDataSelectors": {
+		"companyName": {
+			"selector": "[data-test='job-details-header'] > div:first-child > div:first-child h4",
+			"sanitize": true
+		},
+		"jobName": {
+			"selector": "[data-test='job-details-header'] > div:first-child > div:first-child h1",
+			"sanitize": true
+		},
+		"jobDescription": {
+			"selector": "header + div + section > section > div:first-child div:first-child"
+		},
+		"jobLocation": {
+			"selector": "[data-test='location']",
+			"sanitize": true
+		}
+	}
+}

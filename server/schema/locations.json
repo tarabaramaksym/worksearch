@@ -1,0 +1,27 @@
+{
+	"location_id": {
+		"type": "INTEGER",
+		"primary_key": true,
+		"auto_increment": true,
+		"nullable": false
+	},
+	"location": {
+		"type": "VARCHAR(100)",
+		"nullable": false,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"created_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP"
+	},
+	"indexes": {
+		"unique_location": {
+			"type": "UNIQUE",
+			"columns": [
+				"location"
+			]
+		}
+	}
+}

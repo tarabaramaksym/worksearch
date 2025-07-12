@@ -1,0 +1,12 @@
+{
+	"tables": {
+		"websites": true,
+		"tags": true,
+		"responses": true,
+		"companies": true,
+		"locations": true,
+		"jobs": true,
+		"job_tags": true,
+		"job_locations": true
+	}
+}

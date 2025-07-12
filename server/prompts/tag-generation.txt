@@ -1,0 +1,22 @@
+Analyze this job posting and extract relevant technical tags:
+
+Job Title: {{JOB_NAME}}
+Job Description: {{JOB_DESCRIPTION}}
+
+Extract tags in these categories and return as JSON:
+- programming_language: Programming languages mentioned (e.g., Python, JavaScript, C#, PHP)
+- database: Database technologies (e.g., MySQL, PostgreSQL, MongoDB, Redis)
+- framework: Frameworks and libraries (e.g., React, Django, Laravel, Vue.js)
+- tool: Development tools and platforms (e.g., Docker, AWS, Git, Jenkins)
+- skill: Technical skills and methodologies (e.g., REST APIs, Microservices, Agile, DevOps)
+
+Return ONLY a JSON object in this format:
+{
+  "programming_language": ["Python", "JavaScript"],
+  "database": ["MySQL", "Redis"],
+  "framework": ["React", "Django"],
+  "tool": ["Docker", "AWS"],
+  "skill": ["REST APIs", "Microservices"]
+}
+
+Only include categories that have relevant tags. If no tags found for a category, omit it entirely. 

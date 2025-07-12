@@ -1,0 +1,28 @@
+{
+	"tag_id": {
+		"type": "INTEGER",
+		"primary_key": true,
+		"auto_increment": true,
+		"nullable": false
+	},
+	"tag_name": {
+		"type": "VARCHAR(100)",
+		"nullable": false,
+		"unique": true,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"tag_category": {
+		"type": "VARCHAR(50)",
+		"nullable": true,
+		"default": null,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci",
+		"comment": "e.g., 'programming_language', 'framework', 'tool', 'skill'"
+	},
+	"created_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP"
+	}
+}

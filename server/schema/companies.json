@@ -1,0 +1,42 @@
+{
+	"company_id": {
+		"type": "INTEGER",
+		"primary_key": true,
+		"auto_increment": true,
+		"nullable": false
+	},
+	"company_name": {
+		"type": "VARCHAR(255)",
+		"nullable": false,
+		"unique": true,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"company_description": {
+		"type": "TEXT",
+		"nullable": true,
+		"default": null,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"company_website": {
+		"type": "VARCHAR(500)",
+		"nullable": true,
+		"default": null
+	},
+	"company_size": {
+		"type": "VARCHAR(50)",
+		"nullable": true,
+		"default": null
+	},
+	"created_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP"
+	},
+	"updated_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+	}
+}

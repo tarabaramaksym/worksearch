@@ -1,0 +1,63 @@
+{
+	"response_id": {
+		"type": "INTEGER",
+		"primary_key": true,
+		"auto_increment": true,
+		"nullable": false
+	},
+	"response_status": {
+		"type": "ENUM('pending', 'interview_scheduled', 'rejected', 'accepted', 'withdrawn')",
+		"nullable": false,
+		"default": "pending"
+	},
+	"response_date": {
+		"type": "TIMESTAMP",
+		"nullable": true,
+		"default": null
+	},
+	"response_notes": {
+		"type": "TEXT",
+		"nullable": true,
+		"default": null,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"contact_person": {
+		"type": "VARCHAR(255)",
+		"nullable": true,
+		"default": null,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"contact_email": {
+		"type": "VARCHAR(255)",
+		"nullable": true,
+		"default": null
+	},
+	"interview_date": {
+		"type": "TIMESTAMP",
+		"nullable": true,
+		"default": null
+	},
+	"salary_offered": {
+		"type": "DECIMAL(10,2)",
+		"nullable": true,
+		"default": null
+	},
+	"currency": {
+		"type": "VARCHAR(3)",
+		"nullable": true,
+		"default": null,
+		"comment": "ISO 4217 currency code (e.g., USD, EUR, UAH)"
+	},
+	"created_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP"
+	},
+	"updated_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+	}
+}

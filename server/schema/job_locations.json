@@ -1,0 +1,52 @@
+{
+	"job_location_id": {
+		"type": "INTEGER",
+		"primary_key": true,
+		"auto_increment": true,
+		"nullable": false
+	},
+	"job_id": {
+		"type": "INTEGER",
+		"nullable": false,
+		"foreign_key": {
+			"references": "jobs.entity_id",
+			"on_delete": "CASCADE",
+			"on_update": "CASCADE"
+		}
+	},
+	"location_id": {
+		"type": "INTEGER",
+		"nullable": false,
+		"foreign_key": {
+			"references": "locations.location_id",
+			"on_delete": "CASCADE",
+			"on_update": "CASCADE"
+		}
+	},
+	"created_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP"
+	},
+	"indexes": {
+		"unique_job_location": {
+			"type": "UNIQUE",
+			"columns": [
+				"job_id",
+				"location_id"
+			]
+		},
+		"idx_job_id": {
+			"type": "INDEX",
+			"columns": [
+				"job_id"
+			]
+		},
+		"idx_location_id": {
+			"type": "INDEX",
+			"columns": [
+				"location_id"
+			]
+		}
+	}
+}

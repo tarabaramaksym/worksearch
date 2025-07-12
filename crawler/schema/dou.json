@@ -1,0 +1,52 @@
+{
+	"name": "Dou",
+	"baseUrl": "https://jobs.dou.ua/vacancies/",
+	"listSelector": "#vacancyListId ul li",
+	"listingLink": "a.vt",
+	"listingJobName": "a.vt",
+	"listingJobCompany": ".company",
+	"loadMoreSelector": "#vacancyListId .more-btn a",
+	"loadMoreBtnDisplayNone": true,
+	"jobDataSelectors": {
+		"publicationDate": {
+			"selector": ".date",
+			"sanitize": true,
+			"split": " ",
+			"joinAfterSplit": ".",
+			"translate": {
+				"січня": "01",
+				"лютого": "02",
+				"березня": "03",
+				"квітня": "04",
+				"травня": "05",
+				"червня": "06",
+				"липня": "07",
+				"серпня": "08",
+				"вересня": "09",
+				"жовтня": "10",
+				"листопада": "11",
+				"грудня": "12"
+			}
+		},
+		"companyName": {
+			"selector": ".l-n a",
+			"sanitize": true
+		},
+		"jobName": {
+			"selector": "h1.g-h2",
+			"sanitize": true
+		},
+		"jobDescription": {
+			"selector": ".vacancy-section"
+		},
+		"jobLocation": {
+			"selector": ".place",
+			"sanitize": true,
+			"split": ",",
+			"translate": {
+				"київ": "Kyiv",
+				"за кордоном": "Remote"
+			}
+		}
+	}
+}

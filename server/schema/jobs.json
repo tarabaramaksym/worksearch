@@ -1,0 +1,80 @@
+{
+	"entity_id": {
+		"type": "INTEGER",
+		"primary_key": true,
+		"auto_increment": true,
+		"nullable": false
+	},
+	"job_name": {
+		"type": "VARCHAR(255)",
+		"nullable": false,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"job_description": {
+		"type": "TEXT",
+		"nullable": true,
+		"default": null,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"company_id": {
+		"type": "INTEGER",
+		"nullable": false,
+		"foreign_key": {
+			"references": "companies.company_id",
+			"on_delete": "CASCADE",
+			"on_update": "CASCADE"
+		}
+	},
+	"publication_date": {
+		"type": "DATE",
+		"nullable": true,
+		"default": null
+	},
+	"applied": {
+		"type": "BOOLEAN",
+		"nullable": false,
+		"default": false
+	},
+	"response_id": {
+		"type": "INTEGER",
+		"nullable": true,
+		"default": null,
+		"foreign_key": {
+			"references": "responses.response_id",
+			"on_delete": "SET NULL",
+			"on_update": "CASCADE"
+		}
+	},
+	"website_id": {
+		"type": "INTEGER",
+		"nullable": false,
+		"foreign_key": {
+			"references": "websites.website_id",
+			"on_delete": "CASCADE",
+			"on_update": "CASCADE"
+		}
+	},
+	"job_url": {
+		"type": "VARCHAR(500)",
+		"nullable": false,
+		"unique": true
+	},
+	"created_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP"
+	},
+	"updated_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+	},
+	"failed_ai_request": {
+		"type": "BOOLEAN",
+		"nullable": false,
+		"default": false,
+		"comment": "Indicates if AI tag generation failed for this job"
+	}
+}
