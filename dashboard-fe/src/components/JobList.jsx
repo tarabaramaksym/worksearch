@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 import JobCard from './JobCard'
+import VirtualizeOnView from './VirtualizeOnView'
 import './JobList.css'
 
 function JobList() {
@@ -61,7 +62,9 @@ function JobList() {
       </div>
       <div className="job-list-content">
         {jobs.map((job) => (
-          <JobCard key={job.entity_id} job={job} />
+          <VirtualizeOnView key={job.entity_id} placeholder={<div style={{height: 305}} />} offset={300}>
+            <JobCard job={job} />
+          </VirtualizeOnView>
         ))}
       </div>
     </div>
