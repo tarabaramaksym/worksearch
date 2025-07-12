@@ -20,6 +20,9 @@ function JobCard({ job }) {
         {job.applied && (
           <span className="job-applied">Applied</span>
         )}
+		<a href={job.website_url + job.job_url} target="_blank" rel="noopener noreferrer">
+			<button className="job-card-button">View Job</button>
+		</a>
       </div>
     </div>
   )
