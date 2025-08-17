@@ -8,6 +8,12 @@
 	"tag_name": {
 		"type": "VARCHAR(100)",
 		"nullable": false,
+		"charset": "utf8mb4",
+		"collation": "utf8mb4_unicode_ci"
+	},
+	"normalized_name": {
+		"type": "VARCHAR(100)",
+		"nullable": false,
 		"unique": true,
 		"charset": "utf8mb4",
 		"collation": "utf8mb4_unicode_ci"
