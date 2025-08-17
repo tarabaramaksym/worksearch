@@ -36,7 +36,7 @@
 	},
 	"updated_at": {
 		"type": "TIMESTAMP",
-		"nullable": false,
+		"nullable": true,
 		"default": "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
 	}
 }

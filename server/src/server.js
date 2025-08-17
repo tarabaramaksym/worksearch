@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -24,7 +25,7 @@ const UserJobRepository = require('./repositories/UserJobRepository');
 
 // Middleware
 const { errorHandler, asyncHandler, notFoundHandler } = require('./middleware/errorHandler');
-const { authenticateToken } = require('./middleware/auth');
+const { authenticateToken, authMiddleware } = require('./middleware/auth');
 const {
 	validateJobCreation,
 	validateDuplicateCheck,
@@ -111,11 +112,11 @@ class JobDashboardAPI {
 		this.app.get('/api/jobs/search', asyncHandler(this.searchJobs.bind(this)));
 		this.app.get('/api/jobs/filtered', asyncHandler(this.getJobsWithFilters.bind(this)));
 		this.app.get('/api/jobs/:id', asyncHandler(this.getJobById.bind(this)));
-		this.app.post('/api/jobs', validateJobCreation, asyncHandler(this.createJob.bind(this)));
-		this.app.put('/api/jobs/:id/applied', validateAppliedUpdate, asyncHandler(this.updateJobApplied.bind(this)));
-		this.app.put('/api/jobs/:id/response', asyncHandler(this.updateJobResponse.bind(this)));
-		this.app.delete('/api/jobs/:id', asyncHandler(this.deleteJob.bind(this)));
-		this.app.post('/api/jobs/check-duplicate', validateDuplicateCheck, asyncHandler(this.checkDuplicateJob.bind(this)));
+		this.app.post('/api/jobs', authMiddleware, validateJobCreation, asyncHandler(this.createJob.bind(this)));
+		this.app.put('/api/jobs/:id/applied', authMiddleware, validateAppliedUpdate, asyncHandler(this.updateJobApplied.bind(this)));
+		this.app.put('/api/jobs/:id/response', authMiddleware, asyncHandler(this.updateJobResponse.bind(this)));
+		this.app.delete('/api/jobs/:id', authMiddleware, asyncHandler(this.deleteJob.bind(this)));
+		this.app.post('/api/jobs/check-duplicate', authMiddleware, validateDuplicateCheck, asyncHandler(this.checkDuplicateJob.bind(this)));
 
 		// Data routes
 		this.app.get('/api/tags', asyncHandler(this.getAllTags.bind(this)));
@@ -123,10 +124,10 @@ class JobDashboardAPI {
 		this.app.get('/api/locations', asyncHandler(this.getAllLocations.bind(this)));
 		this.app.get('/api/websites', asyncHandler(this.getAllWebsites.bind(this)));
 
-		this.app.post('/api/tags', validateTagCreation, asyncHandler(this.createTag.bind(this)));
-		this.app.post('/api/companies', validateCompanyCreation, asyncHandler(this.createCompany.bind(this)));
-		this.app.post('/api/locations', validateLocationCreation, asyncHandler(this.createLocation.bind(this)));
-		this.app.post('/api/websites', validateWebsiteCreation, asyncHandler(this.createWebsite.bind(this)));
+		this.app.post('/api/tags', authMiddleware, validateTagCreation, asyncHandler(this.createTag.bind(this)));
+		this.app.post('/api/companies', authMiddleware, validateCompanyCreation, asyncHandler(this.createCompany.bind(this)));
+		this.app.post('/api/locations', authMiddleware, validateLocationCreation, asyncHandler(this.createLocation.bind(this)));
+		this.app.post('/api/websites', authMiddleware, validateWebsiteCreation, asyncHandler(this.createWebsite.bind(this)));
 
 		// Authentication routes
 		this.app.post('/api/auth/register', asyncHandler(this.register.bind(this)));

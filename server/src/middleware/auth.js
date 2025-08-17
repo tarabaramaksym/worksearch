@@ -27,6 +27,38 @@ function authenticateToken(req, res, next) {
 	}
 }
 
+const authMiddleware = (req, res, next) => {
+	const apiKey = req.headers['x-api-key'];
+
+	if (!apiKey) {
+		return res.status(401).json({
+			error: 'API key required',
+			message: 'X-API-Key header is missing'
+		});
+	}
+
+	const validApiKey = process.env.CRAWLER_API_KEY;
+
+	if (!validApiKey) {
+		console.error('❌ CRAWLER_API_KEY environment variable not set');
+		return res.status(500).json({
+			error: 'Server configuration error',
+			message: 'API key validation not configured'
+		});
+	}
+
+	if (apiKey !== validApiKey) {
+		console.warn(`⚠️ Invalid API key attempt from ${req.ip}`);
+		return res.status(403).json({
+			error: 'Invalid API key',
+			message: 'Access denied'
+		});
+	}
+
+	next();
+};
+
 module.exports = {
-	authenticateToken
+	authenticateToken,
+	authMiddleware
 };
