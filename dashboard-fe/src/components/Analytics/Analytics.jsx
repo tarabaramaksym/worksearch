@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useApp } from '../context/AppContext'
+import { useApp } from '@context/AppContext'
 import {
   Chart as ChartJS,
   CategoryScale,

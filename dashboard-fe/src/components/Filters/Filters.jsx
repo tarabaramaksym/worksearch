@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useApp } from '../context/AppContext'
+import { useApp } from '@context/AppContext'
 import './Filters.css'
 
 function Filters() {

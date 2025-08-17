@@ -1,4 +1,4 @@
-import TagList from './TagList'
+import TagList from '@components/TagList/TagList'
 import './JobCard.css'
 
 function JobCard({ job }) {

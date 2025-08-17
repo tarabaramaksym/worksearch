@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { useApp } from '../context/AppContext'
-import JobCard from './JobCard'
-import VirtualizeOnView from './VirtualizeOnView'
+import { useApp } from '@context/AppContext'
+import JobCard from '@components/JobCard/JobCard'
+import VirtualizeOnView from '@components/VirtualizeOnView/VirtualizeOnView'
 import './JobList.css'
 
 function JobList() {

@@ -1,8 +1,8 @@
-import { AppProvider, useApp } from './context/AppContext'
-import JobList from './components/JobList'
-import Analytics from './components/Analytics'
-import Filters from './components/Filters'
-import ViewSwitcher from './components/ViewSwitcher'
+import { AppProvider, useApp } from '@context/AppContext'
+import JobList from '@components/JobList/JobList'
+import Analytics from '@components/Analytics/Analytics'
+import Filters from '@components/Filters/Filters'
+import ViewSwitcher from '@components/ViewSwitcher/ViewSwitcher'
 import './App.css'
 
 function AppLayout() {
