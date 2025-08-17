@@ -145,6 +145,8 @@ class APITester {
 			await this.runTest(() => this.testTagNormalization(), 'Tag Normalization');
 			await this.runTest(() => this.testJobs(), 'Jobs');
 			await this.runTest(() => this.testDuplicateChecking(), 'Duplicate Job Checking');
+			await this.runTest(() => this.testAuthentication(), 'Authentication');
+			await this.runTest(() => this.testUserJobs(), 'User Jobs');
 			await this.runTest(() => this.testAITagGeneration(), 'AI Tag Generation');
 
 			if (!this.failedTests.length) {
@@ -637,6 +639,192 @@ class APITester {
 		console.log('   ✅ Duplicate check still working correctly!');
 
 		console.log('   🎉 All duplicate checking scenarios passed!');
+	}
+
+	/**
+	 * Test authentication functionality
+	 */
+	async testAuthentication() {
+		console.log('\n📍 Testing authentication...');
+
+		// Test user registration
+		console.log('   Testing user registration...');
+		const userData = {
+			email: 'test@example.com',
+			password: 'testpassword123'
+		};
+
+		const registerResponse = await this.makeRequest('POST', '/api/auth/register', userData);
+		this.assert(registerResponse.status === 201, 'User registration returns 201');
+		this.assert(registerResponse.data.success === true, 'Registration successful');
+		this.assert(registerResponse.data.data.token, 'Registration returns token');
+		this.assert(registerResponse.data.data.user.email === userData.email, 'Registration returns user email');
+
+		const userId = registerResponse.data.data.user.user_id;
+		const token = registerResponse.data.data.token;
+		console.log(`   ✅ User registered with ID: ${userId}`);
+
+		// Test duplicate registration
+		console.log('   Testing duplicate registration...');
+		const duplicateResponse = await this.makeRequest('POST', '/api/auth/register', userData);
+		this.assert(duplicateResponse.status === 409, 'Duplicate registration returns 409');
+		console.log('   ✅ Duplicate registration properly rejected');
+
+		// Test user login
+		console.log('   Testing user login...');
+		const loginResponse = await this.makeRequest('POST', '/api/auth/login', userData);
+		this.assert(loginResponse.status === 200, 'User login returns 200');
+		this.assert(loginResponse.data.success === true, 'Login successful');
+		this.assert(loginResponse.data.data.token, 'Login returns token');
+		console.log('   ✅ User login successful');
+
+		// Test invalid login
+		console.log('   Testing invalid login...');
+		const invalidLoginResponse = await this.makeRequest('POST', '/api/auth/login', {
+			email: userData.email,
+			password: 'wrongpassword'
+		});
+		this.assert(invalidLoginResponse.status === 401, 'Invalid login returns 401');
+		console.log('   ✅ Invalid login properly rejected');
+
+		// Test logout
+		console.log('   Testing logout...');
+		const logoutResponse = await this.makeRequest('POST', '/api/auth/logout', {});
+		this.assert(logoutResponse.status === 200, 'Logout returns 200');
+		this.assert(logoutResponse.data.success === true, 'Logout successful');
+		console.log('   ✅ User logout successful');
+
+		// Store for user job tests
+		this.testIds.user_id = userId;
+		this.testIds.auth_token = token;
+
+		console.log('   🎉 Authentication tests completed successfully!');
+	}
+
+	/**
+	 * Test user job functionality
+	 */
+	async testUserJobs() {
+		console.log('\n📍 Testing user jobs...');
+
+		const userId = this.testIds.user_id;
+		const token = this.testIds.auth_token;
+		const jobId = this.testIds.job_id || 1; // Use existing job or fallback
+
+		if (!userId || !token) {
+			console.log('   ⚠️ Skipping user job tests - no authenticated user available');
+			return;
+		}
+
+		// Test protected route without token
+		console.log('   Testing protected route without authentication...');
+		const unauthorizedResponse = await this.makeRequest('GET', `/api/users/${userId}/jobs`);
+		this.assert(unauthorizedResponse.status === 401, 'Protected route returns 401 without token');
+		console.log('   ✅ Protected route properly requires authentication');
+
+		// Helper function to make authenticated requests
+		const makeAuthRequest = (method, path, data = null) => {
+			return new Promise((resolve, reject) => {
+				const url = new URL(path, this.baseUrl);
+				const options = {
+					hostname: url.hostname,
+					port: url.port,
+					path: url.pathname + url.search,
+					method: method,
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`
+					}
+				};
+
+				const req = require('http').request(options, (res) => {
+					let body = '';
+					res.on('data', (chunk) => body += chunk);
+					res.on('end', () => {
+						try {
+							const result = {
+								status: res.statusCode,
+								data: body ? JSON.parse(body) : null
+							};
+							resolve(result);
+						} catch (e) {
+							resolve({
+								status: res.statusCode,
+								data: body
+							});
+						}
+					});
+				});
+
+				req.on('error', reject);
+
+				if (data) {
+					req.write(JSON.stringify(data));
+				}
+
+				req.end();
+			});
+		};
+
+		// Test getting empty user jobs
+		console.log('   Testing get user jobs (initially empty)...');
+		const getUserJobsResponse = await makeAuthRequest('GET', `/api/users/${userId}/jobs`);
+		this.assert(getUserJobsResponse.status === 200, 'Get user jobs returns 200');
+		this.assert(Array.isArray(getUserJobsResponse.data.jobs), 'User jobs data is array');
+		this.assert(getUserJobsResponse.data.jobs.length === 0, 'Initially no jobs for user');
+		console.log('   ✅ Get user jobs works correctly');
+
+		// Test adding a job to user's list
+		console.log('   Testing add job to user...');
+		const addJobData = {
+			job_id: jobId,
+			status: 'saved',
+			notes: 'Interested in this position'
+		};
+
+		const addJobResponse = await makeAuthRequest('POST', `/api/users/${userId}/jobs`, addJobData);
+		this.assert(addJobResponse.status === 201, 'Add job to user returns 201');
+		this.assert(addJobResponse.data.success === true, 'Add job successful');
+		console.log('   ✅ Job added to user successfully');
+
+		// Test duplicate job addition
+		console.log('   Testing duplicate job addition...');
+		const duplicateJobResponse = await makeAuthRequest('POST', `/api/users/${userId}/jobs`, addJobData);
+		this.assert(duplicateJobResponse.status === 409, 'Duplicate job addition returns 409');
+		console.log('   ✅ Duplicate job addition properly rejected');
+
+		// Test getting user jobs after addition
+		console.log('   Testing get user jobs after addition...');
+		const getUserJobsResponse2 = await makeAuthRequest('GET', `/api/users/${userId}/jobs`);
+		this.assert(getUserJobsResponse2.status === 200, 'Get user jobs returns 200');
+		this.assert(getUserJobsResponse2.data.jobs.length === 1, 'User has one job after addition');
+
+		const userJob = getUserJobsResponse2.data.jobs[0];
+		this.assert(userJob.status === 'saved', 'Job status is saved');
+		this.assert(userJob.notes === 'Interested in this position', 'Job notes preserved');
+		console.log('   ✅ User job retrieved with correct data');
+
+		const userJobId = userJob.user_job_id;
+
+		// Test updating user job
+		console.log('   Testing update user job...');
+		const updateJobData = {
+			status: 'applied',
+			notes: 'Applied via company website'
+		};
+
+		const updateJobResponse = await makeAuthRequest('PUT', `/api/users/${userId}/jobs/${userJobId}`, updateJobData);
+		this.assert(updateJobResponse.status === 200, 'Update user job returns 200');
+		this.assert(updateJobResponse.data.success === true, 'Update job successful');
+		console.log('   ✅ User job updated successfully');
+
+		// Test authorization (user trying to access another user's jobs)
+		console.log('   Testing authorization (wrong user)...');
+		const wrongUserResponse = await makeAuthRequest('GET', `/api/users/999/jobs`);
+		this.assert(wrongUserResponse.status === 403, 'Wrong user access returns 403');
+		console.log('   ✅ Authorization properly prevents cross-user access');
+
+		console.log('   🎉 User job tests completed successfully!');
 	}
 
 	/**

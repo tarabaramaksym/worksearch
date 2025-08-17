@@ -7,6 +7,8 @@
 		"locations": true,
 		"jobs": true,
 		"job_tags": true,
-		"job_locations": true
+		"job_locations": true,
+		"users": true,
+		"user_jobs": true
 	}
 }

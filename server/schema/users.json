@@ -1,0 +1,22 @@
+{
+	"user_id": {
+		"type": "INTEGER",
+		"primary_key": true,
+		"auto_increment": true,
+		"nullable": false
+	},
+	"email": {
+		"type": "VARCHAR(255)",
+		"nullable": false,
+		"unique": true
+	},
+	"password_hash": {
+		"type": "VARCHAR(255)",
+		"nullable": false
+	},
+	"created_at": {
+		"type": "TIMESTAMP",
+		"nullable": false,
+		"default": "CURRENT_TIMESTAMP"
+	}
+}
