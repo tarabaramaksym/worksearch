@@ -15,6 +15,8 @@ import {
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
 import './Analytics.css'
 
+const API_BASE_URL = 'http://localhost:3000'
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -31,19 +33,71 @@ ChartJS.register(
  * Analytics component for job dashboard insights
  */
 function Analytics() {
-  const { jobs, filters } = useApp()
+  const { filters } = useApp()
   const [selectedMetric, setSelectedMetric] = useState('tags')
   const [topN, setTopN] = useState(10)
   const [tagFilter, setTagFilter] = useState('all')
+  const [analyticsJobs, setAnalyticsJobs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   
-  // Use filtered jobs from global context (already filtered on server)
-  const filteredJobsFromContext = jobs
+  // Fetch all jobs for analytics (not paginated)
+  useEffect(() => {
+    const fetchAnalyticsJobs = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        // Build filter parameters
+        const filterParams = new URLSearchParams()
+        if (filters.search) {
+          filterParams.append('q', filters.search)
+        }
+        if (filters.companies.length > 0) {
+          filterParams.append('company', filters.companies.join(','))
+        }
+        if (filters.locations.length > 0) {
+          filterParams.append('location', filters.locations.join(','))
+        }
+        if (filters.websites.length > 0) {
+          filterParams.append('website', filters.websites.join(','))
+        }
+        if (filters.applied !== 'all') {
+          filterParams.append('applied', filters.applied === 'applied' ? 'true' : 'false')
+        }
+        
+        // Add dynamic tag category filters
+        Object.entries(filters).forEach(([key, value]) => {
+          if (Array.isArray(value) && value.length > 0 && 
+              !['search', 'companies', 'locations', 'websites', 'applied', 'dateRange', 'customDateStart', 'customDateEnd'].includes(key)) {
+            filterParams.append(key, value.join(','))
+          }
+        })
+        
+        const url = `${API_BASE_URL}/api/jobs/analytics${filterParams.toString() ? `?${filterParams.toString()}` : ''}`
+        const response = await fetch(url)
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch analytics data')
+        }
+        
+        const data = await response.json()
+        setAnalyticsJobs(data.jobs)
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchAnalyticsJobs()
+  }, [filters])
 
   /**
    * Process job data to extract analytics insights
    */
   const analytics = useMemo(() => {
-    if (!filteredJobsFromContext || filteredJobsFromContext.length === 0) return null
+    if (!analyticsJobs || analyticsJobs.length === 0) return null
 
     // Tag/Skill Analysis
     const tagCounts = {}
@@ -75,11 +129,23 @@ function Analytics() {
 
     // Get all tags and categorize them
     const allTags = new Set()
-    filteredJobsFromContext.forEach(job => {
-      if (job.tags && job.tags.length > 0) {
-        job.tags.forEach(tag => {
-          allTags.add(tag.name.toLowerCase())
-        })
+    analyticsJobs.forEach(job => {
+      if (job.tags) {
+        // Handle both string format (comma-separated) and array format
+        if (typeof job.tags === 'string' && job.tags.trim()) {
+          job.tags.split(',').forEach(tag => {
+            const tagName = tag.trim().split(':')[0] // Handle "tag:category" format
+            if (tagName) allTags.add(tagName.toLowerCase())
+          })
+        } else if (Array.isArray(job.tags) && job.tags.length > 0) {
+          job.tags.forEach(tag => {
+            if (typeof tag === 'string') {
+              allTags.add(tag.toLowerCase())
+            } else if (tag && tag.name) {
+              allTags.add(tag.name.toLowerCase())
+            }
+          })
+        }
       }
     })
 
@@ -96,18 +162,42 @@ function Analytics() {
     })
 
     // Filter jobs based on tag filter
-    const filteredJobs = tagFilter === 'all' ? filteredJobsFromContext : filteredJobsFromContext.filter(job => {
-      if (!job.tags || job.tags.length === 0) return false
-      const jobTagNames = job.tags.map(tag => tag.name.toLowerCase())
+    const filteredJobs = tagFilter === 'all' ? analyticsJobs : analyticsJobs.filter(job => {
+      if (!job.tags) return false
+      
+      let jobTagNames = []
+      if (typeof job.tags === 'string' && job.tags.trim()) {
+        jobTagNames = job.tags.split(',').map(tag => tag.trim().split(':')[0].toLowerCase())
+      } else if (Array.isArray(job.tags) && job.tags.length > 0) {
+        jobTagNames = job.tags.map(tag => {
+          if (typeof tag === 'string') return tag.toLowerCase()
+          if (tag && tag.name) return tag.name.toLowerCase()
+          return ''
+        }).filter(Boolean)
+      }
+      
       const categoryTags = tagCategories[tagFilter] || []
       return jobTagNames.some(tagName => categoryTags.includes(tagName))
     })
 
     filteredJobs.forEach(job => {
       // Count tags (only from filtered jobs)
-      if (job.tags && job.tags.length > 0) {
-        job.tags.forEach(tag => {
-          // If filtering by category, only count tags in that category
+      if (job.tags) {
+        let tagsToProcess = []
+        if (typeof job.tags === 'string' && job.tags.trim()) {
+          tagsToProcess = job.tags.split(',').map(tag => {
+            const parts = tag.trim().split(':')
+            return { name: parts[0], category: parts[1] || 'other' }
+          })
+        } else if (Array.isArray(job.tags) && job.tags.length > 0) {
+          tagsToProcess = job.tags.map(tag => {
+            if (typeof tag === 'string') return { name: tag, category: 'other' }
+            if (tag && tag.name) return { name: tag.name, category: tag.category || 'other' }
+            return null
+          }).filter(Boolean)
+        }
+        
+        tagsToProcess.forEach(tag => {
           if (tagFilter === 'all' || (tagCategories[tagFilter] && tagCategories[tagFilter].includes(tag.name.toLowerCase()))) {
             tagCounts[tag.name] = (tagCounts[tag.name] || 0) + 1
           }
@@ -120,14 +210,20 @@ function Analytics() {
       }
 
       // Count locations
-      if (job.locations && job.locations.length > 0) {
-        job.locations.forEach(location => {
-          locationCounts[location] = (locationCounts[location] || 0) + 1
-        })
+      if (job.locations) {
+        if (typeof job.locations === 'string' && job.locations.trim()) {
+          job.locations.split(',').forEach(location => {
+            if (location.trim()) locationCounts[location.trim()] = (locationCounts[location.trim()] || 0) + 1
+          })
+        } else if (Array.isArray(job.locations) && job.locations.length > 0) {
+          job.locations.forEach(location => {
+            if (location && location.trim()) locationCounts[location.trim()] = (locationCounts[location.trim()] || 0) + 1
+          })
+        }
       }
 
       // Analyze salary ranges (assuming salary is in the description or title)
-      const jobText = `${job.title} ${job.description}`.toLowerCase()
+      const jobText = `${job.job_name || job.title || ''} ${job.job_description || job.description || ''}`.toLowerCase()
       if (jobText.includes('$') || jobText.includes('salary') || jobText.includes('usd')) {
         // Simple salary extraction logic
         const salaryMatch = jobText.match(/\$(\d+)k?/)
@@ -171,14 +267,14 @@ function Analytics() {
       locationCounts: sortedLocations,
       salaryRanges,
       jobsByDate,
-      totalJobs: filteredJobsFromContext.length,
+      totalJobs: analyticsJobs.length,
       filteredJobs: filteredJobs.length,
       totalTags: Object.keys(tagCounts).length,
       totalCompanies: Object.keys(companyCounts).length,
       totalLocations: Object.keys(locationCounts).length,
       tagCategories
     }
-  }, [filteredJobsFromContext, topN, tagFilter])
+  }, [analyticsJobs, topN, tagFilter])
 
   /**
    * Generate chart data based on selected metric
@@ -265,6 +361,26 @@ function Analytics() {
         }
       }
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="analytics">
+        <div className="analytics-loading">
+          Loading analytics data...
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="analytics">
+        <div className="analytics-error">
+          Error: {error}
+        </div>
+      </div>
+    )
   }
 
   if (!analytics) {

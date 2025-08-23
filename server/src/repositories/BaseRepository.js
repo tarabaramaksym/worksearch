@@ -65,7 +65,7 @@ class BaseRepository {
 	 * Update record by ID
 	 */
 	async update(id, data) {
-		const result = await this.db.updateById(this.tableName, id, data, this.primaryKey);
+		const result = await this.db.update(this.tableName, id, data, this.primaryKey);
 		return result.changes > 0;
 	}
 
@@ -73,7 +73,7 @@ class BaseRepository {
 	 * Delete record by ID
 	 */
 	async delete(id) {
-		const result = await this.db.deleteById(this.tableName, id, this.primaryKey);
+		const result = await this.db.delete(this.tableName, id, this.primaryKey);
 		return result.changes > 0;
 	}
 

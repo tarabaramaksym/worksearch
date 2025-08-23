@@ -43,15 +43,6 @@ function ViewSwitcher() {
           }}
         />
       </div>
-      
-      {/* Drag Handle */}
-      <div className="drag-handle">
-        <div className="drag-dots">
-          <div className="drag-dot"></div>
-          <div className="drag-dot"></div>
-          <div className="drag-dot"></div>
-        </div>
-      </div>
     </div>
   )
 }

@@ -11,7 +11,10 @@
 			"skipFiles": [
 				"<node_internals>/**"
 			],
-			"program": "${workspaceFolder}\\crawler\\crawl.js"
+			"program": "${workspaceFolder}\\crawler\\crawl.js",
+			"cwd": "${workspaceFolder}\\crawler",
+			"envFile": "${workspaceFolder}\\crawler\\.env",
+			"console": "integratedTerminal"
 		},
 		{
 			"type": "node",

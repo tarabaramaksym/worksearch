@@ -2,10 +2,21 @@ import { useMemo } from 'react'
 import { useApp } from '@context/AppContext'
 import JobCard from '@components/JobCard/JobCard'
 import VirtualizeOnView from '@components/VirtualizeOnView/VirtualizeOnView'
+import Pagination from '@components/Pagination/Pagination'
 import './JobList.css'
 
 function JobList() {
-  const { jobs, filters, filterOptions, resetFilters, resultCount } = useApp()
+  const { 
+    jobs, 
+    filters, 
+    filterOptions, 
+    resetFilters, 
+    resultCount,
+    pagination,
+    setPage,
+    setPageSize,
+    getCurrentURL
+  } = useApp()
   
   const hasActiveFilters = useMemo(() => {
     const basicFilters = (
@@ -22,6 +33,32 @@ function JobList() {
       ) : false
     return basicFilters || tagCategoryFilters
   }, [filters, filterOptions.tagCategories])
+
+  const handlePageChange = (page) => {
+    setPage(page)
+  }
+
+  const handlePageSizeChange = (pageSize) => {
+    setPageSize(pageSize)
+  }
+
+  const handleShare = async () => {
+    try {
+      const url = getCurrentURL()
+      await navigator.clipboard.writeText(url)
+      // You could add a toast notification here
+      alert('URL copied to clipboard!')
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = getCurrentURL()
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      alert('URL copied to clipboard!')
+    }
+  }
 
   if (!jobs || jobs.length === 0) {
     if (hasActiveFilters) {
@@ -55,10 +92,6 @@ function JobList() {
   return (
     <div className="job-list">
       <div className="job-list-header">
-        <h2>
-          {resultCount} {resultCount === 1 ? 'Job' : 'Jobs'}
-          {hasActiveFilters && <span className="filtered-indicator">filtered</span>}
-        </h2>
       </div>
       <div className="job-list-content">
         {jobs.map((job) => (
@@ -67,6 +100,16 @@ function JobList() {
           </VirtualizeOnView>
         ))}
       </div>
+      
+      {/* Pagination Component */}
+      <Pagination
+        currentPage={pagination.currentPage}
+        totalPages={pagination.totalPages}
+        total={pagination.total}
+        pageSize={pagination.pageSize}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+      />
     </div>
   )
 }

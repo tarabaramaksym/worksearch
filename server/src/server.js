@@ -111,6 +111,7 @@ class JobDashboardAPI {
 		this.app.get('/api/jobs', asyncHandler(this.getAllJobs.bind(this)));
 		this.app.get('/api/jobs/search', asyncHandler(this.searchJobs.bind(this)));
 		this.app.get('/api/jobs/filtered', asyncHandler(this.getJobsWithFilters.bind(this)));
+		this.app.get('/api/jobs/analytics', asyncHandler(this.getJobsForAnalytics.bind(this)));
 		this.app.get('/api/jobs/:id', asyncHandler(this.getJobById.bind(this)));
 		this.app.post('/api/jobs', authMiddleware, validateJobCreation, asyncHandler(this.createJob.bind(this)));
 		this.app.put('/api/jobs/:id/applied', authMiddleware, validateAppliedUpdate, asyncHandler(this.updateJobApplied.bind(this)));
@@ -165,7 +166,7 @@ class JobDashboardAPI {
 				console.log('✅ Database initialized successfully');
 			}
 
-			await this.dbService.connect();
+			await this.dbService.init();
 			console.log('🔗 Database service connected');
 		} catch (error) {
 			console.error('Error initializing database:', error);
@@ -204,7 +205,9 @@ class JobDashboardAPI {
 	 */
 	async checkDuplicateJob(req, res) {
 		const { job_name, company_name } = req.body;
+		console.log('Starting duplicate check...')
 		const result = await this.services.jobService.checkDuplicateJob(job_name, company_name);
+		console.log('Ending duplicate check')
 		res.json(result);
 	}
 
@@ -244,8 +247,73 @@ class JobDashboardAPI {
 	 * Get jobs with filters and dynamic filter options
 	 */
 	async getJobsWithFilters(req, res) {
-		const result = await this.services.jobService.getJobsWithFilters(req.query);
-		res.json(result);
+		try {
+			// Extract pagination parameters
+			const { page, limit, sort, order, ...filters } = req.query;
+
+			const pagination = {
+				page: parseInt(page) || 1,
+				limit: Math.min(parseInt(limit) || 20, 100), // Max 100 items per page
+				sort: sort || 'created_at',
+				order: order === 'asc' ? 'asc' : 'desc'
+			};
+
+			// Validate pagination parameters
+			if (pagination.page < 1) pagination.page = 1;
+			if (pagination.limit < 1) pagination.limit = 20;
+
+			// Get paginated jobs for display
+			const result = await this.services.jobService.searchJobs(filters, pagination);
+
+			// Get filter options from all jobs (without pagination)
+			let allJobs;
+			let filterOptions;
+
+			try {
+				allJobs = await this.services.jobService.getJobsForFilterOptions(filters);
+				filterOptions = this.services.jobService.calculateFilterOptions(allJobs);
+			} catch (error) {
+				console.error('Error calculating filter options:', error);
+				filterOptions = {
+					companies: [],
+					locations: [],
+					tagCategories: {},
+					websites: []
+				};
+			}
+
+			// Create the response with proper structure
+			const response = {
+				jobs: result.jobs,
+				count: result.count,
+				pagination: result.pagination,
+				query: result.query,
+				filters: filterOptions
+			};
+
+			res.json(response);
+		} catch (error) {
+			res.status(500).json({ error: error.message });
+		}
+	}
+
+	/**
+	 * Get all jobs for analytics (without pagination)
+	 */
+	async getJobsForAnalytics(req, res) {
+		try {
+			const { ...filters } = req.query;
+
+			// Get all jobs without pagination for analytics
+			const allJobs = await this.services.jobService.getJobsForFilterOptions(filters);
+
+			res.json({
+				jobs: allJobs,
+				count: allJobs.length
+			});
+		} catch (error) {
+			res.status(500).json({ error: error.message });
+		}
 	}
 
 	/**
