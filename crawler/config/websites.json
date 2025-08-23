@@ -1,5 +1,5 @@
 {
-	"dou": false,
-	"glassdoor": false,
+	"dou": true,
+	"glassdoor": true,
 	"linkedin": true
 }

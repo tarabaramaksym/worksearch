@@ -1,22 +1,22 @@
 {
 	"name": "LinkedIn",
-	"baseUrl": "https://www.linkedin.com/jobs/search/",
-	"listSelector": "ul:nth-child(4)",
+	"baseUrl": "https://www.linkedin.com/jobs/search",
+	"listSelector": "ul:nth-child(4) > li",
 	"listingLink": "a",
 	"listingJobName": "a",
 	"listingJobCompany": "div > span",
 	"loadMoreSelector": ".jobs-search-pagination button:nth-child(4)",
 	"loadMoreBtnRemoved": true,
+	"isPagination": true,
 	"scrollToButton": true,
-	"awaitsLogin": true,
-	"invisibleSelectorOnLogin": ".sign-in-modal__outlet-btn",
+	"scrollSelector": ".scaffold-layout__list-header + div",
 	"jobDataSelectors": {
 		"companyName": {
-			"selector": ".l-n a",
+			"selector": ".job-details-jobs-unified-top-card__company-name a",
 			"sanitize": true
 		},
 		"jobName": {
-			"selector": ".job-details-jobs-unified-top-card__company-name a",
+			"selector": ".job-details-jobs-unified-top-card__job-title h1",
 			"sanitize": true
 		},
 		"jobDescription": {

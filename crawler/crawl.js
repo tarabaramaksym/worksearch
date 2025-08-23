@@ -1,24 +1,36 @@
 require('dotenv').config();
 const { chromium } = require('playwright');
-const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
 async function checkJobDuplicate(jobName, companyName, jobUrl, baseApiUrl = 'http://localhost:3000') {
+	const startTime = Date.now();
 	try {
-		const response = await axios.post(`${baseApiUrl}/api/jobs/check-duplicate`, {
-			job_name: jobName,
-			company_name: companyName,
-			job_url: jobUrl
-		}, {
+		const response = await fetch(`${baseApiUrl}/api/jobs/check-duplicate`, {
+			method: 'POST',
 			headers: {
+				'Content-Type': 'application/json',
 				'X-API-Key': process.env.CRAWLER_API_KEY
-			}
+			},
+			body: JSON.stringify({
+				job_name: jobName,
+				company_name: companyName,
+				job_url: jobUrl
+			})
 		});
 
-		return response.data.isDuplicate;
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+
+		const data = await response.json();
+		const responseTime = Date.now() - startTime;
+		console.log(`⏱️ Duplicate check for "${jobName}" at "${companyName}": ${responseTime}ms`);
+
+		return data.isDuplicate;
 	} catch (error) {
-		console.error(`❌ Error checking duplicate for "${jobName}" at "${companyName}":`, error.response?.data?.error || error.message);
+		const responseTime = Date.now() - startTime;
+		console.error(`❌ Error checking duplicate for "${jobName}" at "${companyName}" (${responseTime}ms):`, error.message);
 		return false;
 	}
 }
@@ -66,6 +78,43 @@ function getWebsitesData() {
 }
 
 
+async function handleLoginWait(page, websiteData) {
+	const { awaitsLogin, invisibleSelectorOnLogin } = websiteData;
+
+	if (!awaitsLogin || !invisibleSelectorOnLogin) {
+		return;
+	}
+
+	console.log(`🔐 Website requires login handling, waiting for login process...`);
+
+	await page.waitForTimeout(2000);
+	console.log(`🔍 Starting to monitor login selector: ${invisibleSelectorOnLogin}`);
+
+	const maxWaitTime = 60000;
+	const checkInterval = 1000;
+	const startTime = Date.now();
+
+	while (Date.now() - startTime < maxWaitTime) {
+		try {
+			const loginElement = await page.locator(invisibleSelectorOnLogin).first();
+			const isVisible = await loginElement.isVisible({ timeout: 500 }).catch(() => false);
+
+			if (!isVisible) {
+				console.log(`✅ Login selector disappeared, login process completed`);
+				return;
+			}
+
+			console.log(`⏳ Login selector still visible, waiting...`);
+			await page.waitForTimeout(checkInterval);
+		} catch (error) {
+			console.log(`✅ Login selector not found, assuming login completed`);
+			return;
+		}
+	}
+
+	console.log(`⚠️ Login wait timeout reached (${maxWaitTime}ms), proceeding anyway...`);
+}
+
 async function closePopups(page, websiteData) {
 	const { popupCloseSelectors } = websiteData;
 
@@ -89,60 +138,169 @@ async function closePopups(page, websiteData) {
 	}
 }
 
-async function crawlWebsite(websiteData) {
-	const browser = await chromium.launch({
-		headless: false,
-		slowMo: 300,
+async function createBrowserContext(isHeadless = false, isPersistent = false) {
+	const options = {
+		headless: isHeadless,
 		executablePath: process.env.BROWSER_PATH,
-		args: [
-			'--disable-blink-features=AutomationControlled',
-			'--exclude-switches=enable-automation',
-			'--no-first-run',
-			'--disable-default-apps'
-		]
-	});
+		args: [],
+		ignoreDefaultArgs: ['--enable-automation'],
+	};
 
-	const context = await browser.newContext({
-		userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-		viewport: { width: 1366, height: 768 },
-		locale: 'en-US',
-		timezoneId: 'America/New_York',
-		permissions: ['geolocation'],
-		geolocation: { latitude: 40.7128, longitude: -74.0060 },
-		colorScheme: 'light',
-		extraHTTPHeaders: {
-			'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-			'Accept-Language': 'en-US,en;q=0.9',
-			'Accept-Encoding': 'gzip, deflate, br',
-			'Sec-Fetch-Dest': 'document',
-			'Sec-Fetch-Mode': 'navigate',
-			'Sec-Fetch-Site': 'none',
-			'Sec-Fetch-User': '?1',
-			'Upgrade-Insecure-Requests': '1'
-		}
-	});
+	let context;
+
+	if (isPersistent) {
+		context = await chromium.launchPersistentContext(process.env.BROWSER_USER_DATA_DIR, options);
+	} else {
+		const browser = await chromium.launch(options);
+		context = await browser.newContext({
+			userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			viewport: { width: 1920, height: 1080 },
+			locale: 'en-US',
+			timezoneId: 'America/New_York',
+			permissions: ['geolocation'],
+			geolocation: { latitude: 40.7128, longitude: -74.0060 },
+			colorScheme: 'light',
+			extraHTTPHeaders: {
+				'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+				'Accept-Language': 'en-US,en;q=0.9',
+				'Accept-Encoding': 'gzip, deflate, br',
+				'Sec-Fetch-Dest': 'document',
+				'Sec-Fetch-Mode': 'navigate',
+				'Sec-Fetch-Site': 'none',
+				'Sec-Fetch-User': '?1',
+				'Upgrade-Insecure-Requests': '1'
+			}
+		});
+	}
 
 	await context.addInitScript(() => {
-		if ('webdriver' in navigator) {
-			delete navigator.webdriver;
-		}
+		// Remove webdriver traces
+		delete navigator.webdriver;
+		delete navigator.__driver_evaluate;
+		delete navigator.__webdriver_evaluate;
+		delete navigator.__selenium_evaluate;
+		delete navigator.__fxdriver_evaluate;
+		delete navigator.__driver_unwrapped;
+		delete navigator.__webdriver_unwrapped;
+		delete navigator.__selenium_unwrapped;
+		delete navigator.__fxdriver_unwrapped;
+		delete navigator.__webdriver_script_func;
 
-		if (!window.chrome) {
-			window.chrome = {
-				runtime: {},
-				loadTimes: function () { },
-				csi: function () { },
-				app: {}
-			};
-		}
+		// Override webdriver property
+		Object.defineProperty(navigator, 'webdriver', {
+			get: () => undefined,
+		});
 
-		if (!screen.availTop) Object.defineProperty(screen, 'availTop', { get: () => 0 });
-		if (!screen.availLeft) Object.defineProperty(screen, 'availLeft', { get: () => 0 });
-		if (!screen.colorDepth) Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
-		if (!screen.pixelDepth) Object.defineProperty(screen, 'pixelDepth', { get: () => 0 });
+		// Remove automation flags from window
+		delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+		delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+		delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
+
+		// Override chrome object
+		window.chrome = {
+			runtime: {
+				onConnect: undefined,
+				onMessage: undefined,
+			},
+			loadTimes: function () {
+				return {
+					commitLoadTime: Date.now() - Math.random() * 1000,
+					connectionInfo: 'h2',
+					finishDocumentLoadTime: Date.now() - Math.random() * 500,
+					finishLoadTime: Date.now() - Math.random() * 100,
+					firstPaintAfterLoadTime: 0,
+					firstPaintTime: Date.now() - Math.random() * 2000,
+					navigationType: 'Other',
+					npnNegotiatedProtocol: 'h2',
+					requestTime: Date.now() - Math.random() * 3000,
+					startLoadTime: Date.now() - Math.random() * 2000,
+					wasAlternateProtocolAvailable: false,
+					wasFetchedViaSpdy: true,
+					wasNpnNegotiated: true
+				};
+			},
+			csi: function () {
+				return {
+					pageT: Date.now() - Math.random() * 100,
+					tran: Math.floor(Math.random() * 20) + 15
+				};
+			},
+			app: {}
+		};
+
+		// Override plugins
+		Object.defineProperty(navigator, 'plugins', {
+			get: () => [
+				{
+					0: { type: "application/x-google-chrome-pdf", suffixes: "pdf", description: "Portable Document Format", enabledPlugin: Plugin },
+					description: "Portable Document Format",
+					filename: "internal-pdf-viewer",
+					length: 1,
+					name: "Chrome PDF Plugin"
+				},
+				{
+					0: { type: "application/pdf", suffixes: "pdf", description: "", enabledPlugin: Plugin },
+					description: "",
+					filename: "mhjfbmdgcfjbbpaeojofohoefgiehjai",
+					length: 1,
+					name: "Chrome PDF Viewer"
+				},
+				{
+					0: { type: "application/x-nacl", suffixes: "", description: "Native Client Executable", enabledPlugin: Plugin },
+					1: { type: "application/x-pnacl", suffixes: "", description: "Portable Native Client Executable", enabledPlugin: Plugin },
+					description: "",
+					filename: "internal-nacl-plugin",
+					length: 2,
+					name: "Native Client"
+				}
+			],
+		});
+
+		// Override languages
+		Object.defineProperty(navigator, 'languages', {
+			get: () => ['en-US', 'en'],
+		});
+
+		// Override screen properties
+		Object.defineProperty(screen, 'availTop', { get: () => 0 });
+		Object.defineProperty(screen, 'availLeft', { get: () => 0 });
+		Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
+		Object.defineProperty(screen, 'pixelDepth', { get: () => 24 });
+
+		// Override permissions
+		const originalQuery = window.navigator.permissions.query;
+		window.navigator.permissions.query = (parameters) => (
+			parameters.name === 'notifications' ?
+				Promise.resolve({ state: Notification.permission }) :
+				originalQuery(parameters)
+		);
+
+		// Mock vendor and platform
+		Object.defineProperty(navigator, 'vendor', {
+			get: () => 'Google Inc.',
+		});
+
+		Object.defineProperty(navigator, 'platform', {
+			get: () => 'Win32',
+		});
+
+		// Hide automation in iframe
+		Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+			get: function () {
+				return window;
+			}
+		});
 	});
 
-	const { name, baseUrl, urls, loadMoreSelector, loadMoreBtnDisplayNone, scrollToButton, listSelector, listingLink } = websiteData;
+	return context;
+}
+
+async function crawlWebsite(websiteData) {
+	console.log(`🔄 Launching with user profile: ${process.env.BROWSER_USER_DATA_DIR}`);
+
+	const context = await createBrowserContext(false, true); // non-headless, persistent
+
+	const { name, baseUrl, urls, loadMoreSelector, loadMoreBtnDisplayNone, scrollToButton, listSelector, listingLink, scrollMax } = websiteData;
 	console.log(`🕷️ Starting to crawl ${name}...`);
 
 	const allJobUrls = [];
@@ -158,10 +316,15 @@ async function crawlWebsite(websiteData) {
 			timeout: 30000
 		});
 
+		await page.waitForLoadState('domcontentloaded');
+		await page.waitForTimeout(3000);
+
 		await page.waitForTimeout(1000 + Math.random() * 2000);
 
 		await page.mouse.move(100 + Math.random() * 200, 100 + Math.random() * 200);
 		await page.waitForTimeout(500 + Math.random() * 1000);
+
+		await handleLoginWait(page, websiteData);
 
 		try {
 			await page.waitForSelector(listSelector, { timeout: 10000 });
@@ -175,7 +338,9 @@ async function crawlWebsite(websiteData) {
 		await closePopups(page, websiteData);
 
 		let loadMoreClicks = 0;
-		const maxClicks = 50;
+		const maxClicks = scrollMax || 50; // Use scrollMax from config, fallback to 50
+
+		console.log(`🔄 Will click "Load More" up to ${maxClicks} times`);
 
 		while (loadMoreClicks < maxClicks) {
 			try {
@@ -192,6 +357,44 @@ async function crawlWebsite(websiteData) {
 					if (displayStyle === 'none') {
 						console.log(`✅ Load more button has display:none after ${loadMoreClicks} clicks`);
 						break;
+					}
+				}
+
+				if (websiteData.scrollSelector) {
+					console.log(`📜 Scrolling through specific container: ${websiteData.scrollSelector}`);
+
+					const scrollContainer = await page.locator(websiteData.scrollSelector).first();
+					if (scrollContainer) {
+						// Scroll through the entire scroll container
+						await scrollContainer.evaluate((container) => {
+							return new Promise((resolve) => {
+								const scrollHeight = container.scrollHeight;
+								const clientHeight = container.clientHeight;
+								const maxScroll = scrollHeight - clientHeight;
+
+								if (maxScroll <= 0) {
+									resolve();
+									return;
+								}
+
+								let currentScroll = 0;
+								const scrollStep = 300;
+								const scrollInterval = setInterval(() => {
+									currentScroll += scrollStep;
+									if (currentScroll >= maxScroll) {
+										console.log('Scrolling complete')
+										container.scrollTop = maxScroll;
+										clearInterval(scrollInterval);
+										resolve();
+									} else {
+										console.log('Scrolling, ' + currentScroll)
+										container.scrollTop = currentScroll;
+									}
+								}, 100);
+							});
+						});
+
+						await page.waitForTimeout(1000 + Math.random() * 1000);
 					}
 				}
 
@@ -240,6 +443,11 @@ async function crawlWebsite(websiteData) {
 					}
 				}
 
+				// Extract jobs immediately if pagination mode
+				if (websiteData.isPagination) {
+					await extractJobsFromCurrentPage(page, websiteData, baseUrl, urlPath, name, allJobUrls);
+				}
+
 				await loadMoreButton.click();
 				loadMoreClicks++;
 
@@ -257,64 +465,17 @@ async function crawlWebsite(websiteData) {
 			console.log(`⚠️ Reached maximum clicks (${maxClicks}) for safety`);
 		}
 
-		console.log(`📋 Extracting job URLs from ${fullUrl}...`);
-
-		try {
-			const listItems = await page.locator(`${listSelector}`).all();
-			console.log(`📝 Found ${listItems.length} job listings`);
-			for (let i = 0; i < listItems.length; i++) {
-				try {
-					const linkSelector = listingLink;
-					const jobLink = await listItems[i].locator(linkSelector).first();
-					const href = await jobLink.getAttribute('href');
-
-					if (href) {
-						const absoluteUrl = href.startsWith('http') ? href : new URL(href, baseUrl).href;
-
-						const { listingJobName, listingJobCompany } = websiteData;
-						let jobName = null;
-						let companyName = null;
-
-						if (listingJobName) {
-							jobName = await listItems[i].locator(listingJobName).first().textContent().catch(() => null);
-							if (jobName) jobName = jobName.replace(/\s+/g, ' ').trim();
-						}
-
-						if (listingJobCompany) {
-							companyName = await listItems[i].locator(listingJobCompany).first().textContent().catch(() => null);
-							if (companyName) companyName = companyName.replace(/\s+/g, ' ').trim();
-						}
-
-						let isDuplicate = false;
-						if (jobName && companyName) {
-							isDuplicate = await checkJobDuplicate(jobName, companyName, absoluteUrl);
-							if (isDuplicate) {
-								console.log(`🔄 Duplicate found: ${jobName} at ${companyName}`);
-								continue;
-							}
-						}
-
-						allJobUrls.push({
-							url: absoluteUrl,
-							source: urlPath,
-							website: name,
-							jobName: jobName,
-							companyName: companyName
-						});
-					}
-				} catch (linkError) {
-					continue;
-				}
-			}
-		} catch (listError) {
-			console.error(`❌ Error extracting job URLs: ${listError.message}`);
+		// Extract jobs at the end (either all accumulated or just the last page)
+		if (!websiteData.isPagination) {
+			console.log(`📋 Extracting job URLs from ${fullUrl}...`);
+			await extractJobsFromCurrentPage(page, websiteData, baseUrl, urlPath, name, allJobUrls);
 		}
 
 		await page.close();
 		console.log(`✅ Completed crawling ${urlPath}`);
 	}
 
-	await browser.close();
+	await context.close();
 
 	console.log(`\n🎯 CRAWLING COMPLETE FOR ${name}`);
 	console.log(`📊 Total job URLs found: ${allJobUrls.length}`);
@@ -345,14 +506,18 @@ async function saveJobDataToAPI(jobData, baseApiUrl = 'http://localhost:3000', r
 				tags: []
 			};
 
-			const response = await axios.post(`${baseApiUrl}/api/jobs`, createJobPayload, {
+			const response = await fetch(`${baseApiUrl}/api/jobs`, {
+				method: 'POST',
 				headers: {
+					'Content-Type': 'application/json',
 					'X-API-Key': process.env.CRAWLER_API_KEY
-				}
+				},
+				body: JSON.stringify(createJobPayload)
 			});
 
 			if (response.status === 201) {
-				return response.data.id;
+				const data = await response.json();
+				return data.id;
 			}
 
 		} catch (error) {
@@ -451,60 +616,64 @@ async function extractJobData(page, url, selectors) {
 	}
 }
 
+async function extractJobsFromCurrentPage(page, websiteData, baseUrl, urlPath, name, allJobUrls) {
+	try {
+		const listItems = await page.locator(`${websiteData.listSelector}`).all();
+		console.log(`📝 Found ${listItems.length} job listings`);
+		for (let i = 0; i < listItems.length; i++) {
+			try {
+				const linkSelector = websiteData.listingLink;
+				const jobLink = await listItems[i].locator(linkSelector).first();
+				const href = await jobLink.getAttribute('href');
+
+				if (href) {
+					const absoluteUrl = href.startsWith('http') ? href : new URL(href, baseUrl).href;
+
+					const { listingJobName, listingJobCompany } = websiteData;
+					let jobName = null;
+					let companyName = null;
+
+					if (listingJobName) {
+						jobName = await listItems[i].locator(listingJobName).first().textContent().catch(() => null);
+						if (jobName) jobName = jobName.replace(/\s+/g, ' ').trim();
+					}
+
+					if (listingJobCompany) {
+						companyName = await listItems[i].locator(listingJobCompany).first().textContent().catch(() => null);
+						if (companyName) companyName = companyName.replace(/\s+/g, ' ').trim();
+					}
+
+					let isDuplicate = false;
+					if (jobName && companyName) {
+						isDuplicate = await checkJobDuplicate(jobName, companyName, absoluteUrl);
+						if (isDuplicate) {
+							console.log(`🔄 Duplicate found: ${jobName} at ${companyName}`);
+							continue;
+						}
+					}
+
+					allJobUrls.push({
+						url: absoluteUrl,
+						source: urlPath,
+						website: name,
+						jobName: jobName,
+						companyName: companyName
+					});
+				}
+			} catch (linkError) {
+				continue;
+			}
+		}
+	} catch (listError) {
+		console.error(`❌ Error extracting job URLs: ${listError.message}`);
+	}
+}
+
 async function processJobUrls(jobUrls) {
 	const totalUrls = Object.values(jobUrls).flat().length;
 	console.log(`\n🔍 Starting parallel job processing for ${totalUrls} URLs...`);
 
-	const browser = await chromium.launch({
-		headless: true,
-		executablePath: 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
-		args: [
-			'--disable-blink-features=AutomationControlled',
-			'--exclude-switches=enable-automation',
-			'--no-first-run',
-			'--disable-default-apps'
-		]
-	});
-
-	const context = await browser.newContext({
-		userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-		viewport: { width: 1920, height: 1080 },
-		locale: 'en-US',
-		timezoneId: 'America/New_York',
-		permissions: ['geolocation'],
-		geolocation: { latitude: 40.7128, longitude: -74.0060 },
-		colorScheme: 'light',
-		extraHTTPHeaders: {
-			'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-			'Accept-Language': 'en-US,en;q=0.9',
-			'Accept-Encoding': 'gzip, deflate, br',
-			'Sec-Fetch-Dest': 'document',
-			'Sec-Fetch-Mode': 'navigate',
-			'Sec-Fetch-Site': 'none',
-			'Sec-Fetch-User': '?1',
-			'Upgrade-Insecure-Requests': '1'
-		}
-	});
-
-	await context.addInitScript(() => {
-		if ('webdriver' in navigator) {
-			delete navigator.webdriver;
-		}
-
-		if (!window.chrome) {
-			window.chrome = {
-				runtime: {},
-				loadTimes: function () { },
-				csi: function () { },
-				app: {}
-			};
-		}
-
-		if (!screen.availTop) Object.defineProperty(screen, 'availTop', { get: () => 0 });
-		if (!screen.availLeft) Object.defineProperty(screen, 'availLeft', { get: () => 0 });
-		if (!screen.colorDepth) Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
-		if (!screen.pixelDepth) Object.defineProperty(screen, 'pixelDepth', { get: () => 24 });
-	});
+	const context = await createBrowserContext(false, true);
 
 	const page = await context.newPage();
 
@@ -590,7 +759,7 @@ async function processJobUrls(jobUrls) {
 	console.log(`\n⏳ Waiting for ${savePromises.length} remaining API saves to complete...`);
 	await Promise.allSettled(savePromises);
 
-	await browser.close();
+	await context.close();
 
 	console.log(`\n🎯 PARALLEL PROCESSING COMPLETE`);
 	console.log(`📊 Total URLs processed: ${processed}`);
