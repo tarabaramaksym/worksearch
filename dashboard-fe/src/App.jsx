@@ -88,15 +88,15 @@ function AppLayout() {
 				<div style={{ width: '320px' }}></div>
 				<footer>
 					<div className="footer-links">
-						<span class="author-link">
-							<span class="link-icon email-icon">📧</span>
-							<span class="link-handle">tarabara.maksym@protonmail.com</span>
+						<span className="author-link">
+							<span className="link-icon email-icon">📧</span>
+							<span className="link-handle">tarabara.maksym@protonmail.com</span>
 						</span>
-						<a href="https://t.me/trbmaksym" class="author-link" target="_blank" rel="noopener noreferrer">
-							<img src="telegram.png" alt="Telegram" class="link-icon" />
+						<a href="https://t.me/trbmaksym" className="author-link" target="_blank" rel="noopener noreferrer">
+							<img src="telegram.png" alt="Telegram" className="link-icon" />
 						</a>
-						<a href="https://github.com/tarabaramaksym" class="author-link" target="_blank" rel="noopener noreferrer">
-							<img src="github.svg" alt="GitHub" class="link-icon" />
+						<a href="https://github.com/tarabaramaksym" className="author-link" target="_blank" rel="noopener noreferrer">
+							<img src="github.svg" alt="GitHub" className="link-icon" />
 						</a>
 					</div>
 
