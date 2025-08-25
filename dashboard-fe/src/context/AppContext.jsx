@@ -1,6 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react'
 
-const API_BASE_URL = 'http://localhost:3000'
+
 
 const AppContext = createContext()
 
@@ -33,7 +33,7 @@ const initialState = {
 	// Pagination state
 	pagination: {
 		currentPage: 1,
-		pageSize: 20,
+		pageSize: 21,
 		totalPages: 0,
 		total: 0
 	}
@@ -183,7 +183,7 @@ export function AppProvider({ children }) {
 
 		// Add pagination params
 		if (pagination.currentPage > 1) url.searchParams.set('page', pagination.currentPage.toString())
-		if (pagination.pageSize !== 20) url.searchParams.set('limit', pagination.pageSize.toString())
+		if (pagination.pageSize !== 21) url.searchParams.set('limit', pagination.pageSize.toString())
 
 		// Update URL without reloading the page
 		window.history.replaceState({}, '', url.toString())
@@ -216,11 +216,11 @@ export function AppProvider({ children }) {
 
 		// Validate and sanitize pagination parameters
 		let page = parseInt(params.get('page')) || 1
-		let limit = parseInt(params.get('limit')) || 20
+		let limit = parseInt(params.get('limit')) || 21
 
 		// Ensure valid ranges
 		if (page < 1) page = 1
-		if (limit < 1 || limit > 100) limit = 20
+		if (limit < 1 || limit > 100) limit = 21
 
 		const pagination = {
 			currentPage: page,
@@ -285,7 +285,7 @@ export function AppProvider({ children }) {
 			params.append('page', pagination.currentPage.toString())
 			params.append('limit', pagination.pageSize.toString())
 
-			const response = await fetch(`${API_BASE_URL}/api/jobs/filtered?${params.toString()}`)
+			const response = await fetch('/api/jobs/filtered?' + params.toString())
 			if (!response.ok) throw new Error('Failed to fetch jobs')
 
 			const data = await response.json()
@@ -340,7 +340,7 @@ export function AppProvider({ children }) {
 			}
 		})
 
-		if (urlPagination.currentPage !== 1 || urlPagination.pageSize !== 20) {
+		if (urlPagination.currentPage !== 1 || urlPagination.pageSize !== 21) {
 			dispatch({ type: actions.SET_PAGINATION, payload: urlPagination })
 		}
 
@@ -351,14 +351,14 @@ export function AppProvider({ children }) {
 		const hasFilters = Object.values(urlFilters).some(value =>
 			value && (Array.isArray(value) ? value.length > 0 : value !== 'all')
 		)
-		const hasPagination = urlPagination.currentPage > 1 || urlPagination.pageSize !== 20
+		const hasPagination = urlPagination.currentPage > 1 || urlPagination.pageSize !== 21
 
 		if (hasFilters || hasPagination) {
 			// Fetch data with URL parameters
 			fetchJobsWithFilters(urlFilters, urlPagination)
 		} else {
 			// Fetch default data (first page)
-			fetchJobsWithFilters(initialState.filters, { currentPage: 1, pageSize: 20 })
+			fetchJobsWithFilters(initialState.filters, { currentPage: 1, pageSize: 21 })
 		}
 
 		// Mark initial setup as complete after a short delay

@@ -79,7 +79,7 @@ class JobRepository extends BaseRepository {
 	 */
 	async searchJobs(filters = {}, pagination = {}) {
 		const { q, job_name, job_description, company, applied, website, location, ...tagCategoryFilters } = filters;
-		const { page = 1, limit = 20, sort = 'created_at', order = 'desc' } = pagination;
+		const { page = 1, limit = 21, sort = 'created_at', order = 'desc' } = pagination;
 
 		// Calculate offset
 		const offset = (page - 1) * limit;

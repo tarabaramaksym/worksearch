@@ -44,6 +44,14 @@ class JobDashboardAPI {
 		this.repositories = {};
 		this.services = {};
 
+		console.log('🔍 DEBUG: Current working directory:', process.cwd());
+		console.log('🔍 DEBUG: Current directory contents:', require('fs').readdirSync('.'));
+		console.log('🔍 DEBUG: Server directory contents:', require('fs').readdirSync('./server'));
+		console.log('🔍 DEBUG: Server database contents:', require('fs').readdirSync('./server/data'));
+		console.log('🔍 DEBUG: Server/schema directory contents:', require('fs').readdirSync('./server/schema'));
+		console.log('🔍 DEBUG: Database path:', this.dbPath);
+		console.log('🔍 DEBUG: Database file exists:', require('fs').existsSync(this.dbPath));
+
 		this.setupMiddleware();
 		this.setupServices();
 		this.setupRoutes();
@@ -62,6 +70,13 @@ class JobDashboardAPI {
 			console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
 			next();
 		});
+
+		// Serve static files from React build in production
+		if (process.env.NODE_ENV === 'production') {
+			const frontendPath = path.join(__dirname, '../../dashboard-fe/dist');
+			this.app.use(express.static(frontendPath));
+			console.log(`📁 Serving frontend from: ${frontendPath}`);
+		}
 	}
 
 	/**
@@ -143,6 +158,14 @@ class JobDashboardAPI {
 		// Error handling
 		this.app.use(notFoundHandler);
 		this.app.use(errorHandler);
+
+		// Catch all handler for SPA routing (must be after error handlers)
+		if (process.env.NODE_ENV === 'production') {
+			this.app.get('/{*any}', (req, res) => {
+				const indexPath = path.join(__dirname, '../../dashboard-fe/dist/index.html');
+				res.sendFile(indexPath);
+			});
+		}
 	}
 
 	/**
@@ -253,14 +276,14 @@ class JobDashboardAPI {
 
 			const pagination = {
 				page: parseInt(page) || 1,
-				limit: Math.min(parseInt(limit) || 20, 100), // Max 100 items per page
+				limit: Math.min(parseInt(limit) || 21, 100), // Max 100 items per page
 				sort: sort || 'created_at',
 				order: order === 'asc' ? 'asc' : 'desc'
 			};
 
 			// Validate pagination parameters
 			if (pagination.page < 1) pagination.page = 1;
-			if (pagination.limit < 1) pagination.limit = 20;
+			if (pagination.limit < 1) pagination.limit = 21;
 
 			// Get paginated jobs for display
 			const result = await this.services.jobService.searchJobs(filters, pagination);

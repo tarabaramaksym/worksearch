@@ -5,7 +5,9 @@
 	"main": "src/init.js",
 	"scripts": {
 		"test": "node src/test.js",
-		"start": "node src/server.js"
+		"build": "cd ../dashboard-fe && npm run build && cd ../server",
+		"start": "NODE_ENV=production node src/server.js",
+		"dev": "node src/server.js"
 	},
 	"author": "Maksym Tarabara <tarabara.maksym@protonmail.com>",
 	"license": "SEE LICENSE IN LICENSE",

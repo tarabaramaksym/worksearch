@@ -43,7 +43,7 @@ class JobService {
 	 */
 	async searchJobs(filters, pagination = {}) {
 		try {
-			const { page = 1, limit = 20, sort = 'created_at', order = 'desc' } = pagination;
+			const { page = 1, limit = 21, sort = 'created_at', order = 'desc' } = pagination;
 
 			const total = await this.jobRepo.getJobsCount(filters);
 
