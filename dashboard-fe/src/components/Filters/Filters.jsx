@@ -234,48 +234,6 @@ function Filters() {
 						<span className="search-icon">🔍</span>
 					</div>
 				</div>
-				<div className="filter-section">
-					<h3>Quick Filters</h3>
-					<div className="quick-filters">
-						<select
-							value={filters.applied}
-							onChange={handleAppliedChange}
-							className="filter-select"
-						>
-							<option value="all">All Applications</option>
-							<option value="not_applied">Not Applied</option>
-							<option value="applied">Applied</option>
-						</select>
-						<select
-							value={filters.dateRange}
-							onChange={handleDateRangeChange}
-							className="filter-select"
-						>
-							<option value="all">All Time</option>
-							<option value="today">Today</option>
-							<option value="week">Last Week</option>
-							<option value="month">Last Month</option>
-							<option value="custom">Custom Range</option>
-						</select>
-					</div>
-					{filters.dateRange === 'custom' && (
-						<div className="custom-date-range">
-							<input
-								type="date"
-								value={filters.customDateStart}
-								onChange={(e) => handleCustomDateChange('customDateStart', e.target.value)}
-								className="date-input"
-							/>
-							<span>to</span>
-							<input
-								type="date"
-								value={filters.customDateEnd}
-								onChange={(e) => handleCustomDateChange('customDateEnd', e.target.value)}
-								className="date-input"
-							/>
-						</div>
-					)}
-				</div>
 				{filterOptions?.tagCategories && Object.entries(filterOptions.tagCategories).map(([category, tags]) => {
 					const categoryTitle = category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ')
 					return (

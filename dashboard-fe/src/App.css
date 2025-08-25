@@ -326,3 +326,54 @@
 		font-size: 0.9rem;
 	}
 }
+
+.footer-links {
+	display: flex;
+	gap: 4px;
+}
+
+footer {
+	padding-block: 48px;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+	gap: 8px;
+}
+
+footer p {
+	text-align: center;
+}
+
+.author-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border-radius: 8px;
+	text-decoration: none;
+	font-size: 13px;
+	transition: all 0.2s ease;
+	backdrop-filter: blur(10px);
+	padding: 6px 10px;
+	white-space: nowrap;
+}
+
+.author-link:hover {
+	background: rgba(255, 255, 255, 0.2);
+	transform: translateY(-1px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.link-icon {
+	height: 32px;
+	width: 32px;
+}
+
+.email-icon {
+	font-size: 24px;
+}
+
+.link-handle {
+	margin-top: 4px;
+}

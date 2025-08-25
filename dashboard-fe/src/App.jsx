@@ -83,6 +83,28 @@ function AppLayout() {
 					)}
 				</div>
 			</main>
+
+			<div style={{ display: 'flex' }}>
+				<div style={{ width: '320px' }}></div>
+				<footer>
+					<div className="footer-links">
+						<span class="author-link">
+							<span class="link-icon email-icon">📧</span>
+							<span class="link-handle">tarabara.maksym@protonmail.com</span>
+						</span>
+						<a href="https://t.me/trbmaksym" class="author-link" target="_blank" rel="noopener noreferrer">
+							<img src="telegram.png" alt="Telegram" class="link-icon" />
+						</a>
+						<a href="https://github.com/tarabaramaksym" class="author-link" target="_blank" rel="noopener noreferrer">
+							<img src="github.svg" alt="GitHub" class="link-icon" />
+						</a>
+					</div>
+
+					<p>
+						© {new Date().getFullYear()} Worksearch. All rights reserved.
+					</p>
+				</footer>
+			</div>
 		</div>
 	)
 }

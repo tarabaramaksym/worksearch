@@ -44,14 +44,6 @@ class JobDashboardAPI {
 		this.repositories = {};
 		this.services = {};
 
-		console.log('🔍 DEBUG: Current working directory:', process.cwd());
-		console.log('🔍 DEBUG: Current directory contents:', require('fs').readdirSync('.'));
-		console.log('🔍 DEBUG: Server directory contents:', require('fs').readdirSync('./server'));
-		console.log('🔍 DEBUG: Server database contents:', require('fs').readdirSync('./server/data'));
-		console.log('🔍 DEBUG: Server/schema directory contents:', require('fs').readdirSync('./server/schema'));
-		console.log('🔍 DEBUG: Database path:', this.dbPath);
-		console.log('🔍 DEBUG: Database file exists:', require('fs').existsSync(this.dbPath));
-
 		this.setupMiddleware();
 		this.setupServices();
 		this.setupRoutes();
